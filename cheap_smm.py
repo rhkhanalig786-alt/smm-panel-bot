@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 # =======================================================================================
 load_dotenv() # Loads the local .env file (Render will use its own Environment Variables)
 
-BOT_TOKEN = os.environ.get('8623753685:AAFkfHmOWSOJZX8Ng1J93sIWSqcDNNMcxx4')
+BOT_TOKEN = os.environ.get('8228287584:AAFa93-H1WLx-sY_JNO3XJmeqzOogPImhqM')
 API_KEY = os.environ.get('iyQl8EohC0u3Be7I6FTh054FUHBJPRVE761vsZB02dNF5kkSznjVfNGThZfoYRhN')
 
 if not BOT_TOKEN or not API_KEY:
