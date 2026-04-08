@@ -53,7 +53,7 @@ API_KEY = os.environ.get('iyQl8EohC0u3Be7I6FTh054FUHBJPRVE761vsZB02dNF5kkSznjVfN
 if not BOT_TOKEN or not API_KEY:
     print("❌ CRITICAL ERROR: BOT_TOKEN or API_KEY is missing from environment variables!")
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(8228287584:AAFa93-H1WLx-sY_JNO3XJmeqzOogPImhqM)
 API_URL = "https://indiansmmprovider.in/api/v2"
 
 # ADMIN & SUPPORT DETAILS
