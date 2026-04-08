@@ -32,7 +32,7 @@ def home():
 # =======================================================================================
 # 2. CONFIGURATION & CREDENTIALS
 # =======================================================================================
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFa93-H1WLx-sY_JNO3XJmeqzOogPImhqM')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEznVpPO0bjGL-WfBjlMmK4tUMg0KB6GqQ')
 API_KEY = os.environ.get('API_KEY', 'w4NIpEsjLOWxMM87R0ZxiPeMgu2ri8ugJeYPmMa206aPmOhDu9NJSl13mvQvPUEZ')
 bot = telebot.TeleBot(BOT_TOKEN)
 
