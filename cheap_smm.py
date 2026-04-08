@@ -42,7 +42,7 @@ def home():
 # =======================================================================================
 # It looks for Render variables first. If not found, it uses your hardcoded ones so it NEVER crashes.
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFa93-H1WLx-sY_JNO3XJmeqzOogPImhqM')
-API_KEY = os.environ.get('API_KEY', 'ro85WnPn1ZpyXVXqsLwDnC7UuYYJ0Fvs5nJvmYKF4m3IbANG7jErpeAfY2vlP674')
+API_KEY = os.environ.get('API_KEY', 'w4NIpEsjLOWxMM87R0ZxiPeMgu2ri8ugJeYPmMa206aPmOhDu9NJSl13mvQvPUEZ')
 
 bot = telebot.TeleBot(BOT_TOKEN)
 API_URL = "https://indiansmmprovider.in/api/v2"
