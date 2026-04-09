@@ -1,7 +1,7 @@
 """
 =========================================================================================
-🔥 CHEAP SMM PANEL BOT - BULLETPROOF ENTERPRISE V8.3 🔥
-Fix: Flawless Dynamic QR Code Generation & Memory Buffer Fix
+🔥 CHEAP SMM PANEL BOT - BULLETPROOF ENTERPRISE V10 🔥
+Fix: Service Stats Confirmation Screen & Bulk ID Assembler
 =========================================================================================
 """
 
@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 @app.route('/')
 def home(): 
-    return "🔥 V8.3 MASTER CONTROL IS ONLINE 🔥"
+    return "🔥 V10 MASTER CONTROL IS ONLINE 🔥"
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAHcMXNJpqHkYZQJhoOX45L9YioMAh7wzaY')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEo7o4vYgRi5tCTUg4COzpo5DyS9LAgnWM')
 API_KEY = os.environ.get('API_KEY', 'w4NIpEsjLOWxMM87R0ZxiPeMgu2ri8ugJeYPmMa206aPmOhDu9NJSl13mvQvPUEZ')
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -95,7 +95,7 @@ def init_database():
         execute_db("INSERT INTO settings (key, value) VALUES ('global_margin', '1.45')")
 
 # =======================================================================================
-# 3. UTILITY FUNCTIONS & API MANAGER
+# 3. UTILITY FUNCTIONS
 # =======================================================================================
 def get_global_margin():
     row = execute_db("SELECT value FROM settings WHERE key='global_margin'", fetch=True)
@@ -118,7 +118,7 @@ def call_smm_api(action, extra_data=None):
     except Exception: return None
 
 # =======================================================================================
-# 4. KEYBOARD GENERATORS
+# 4. KEYBOARDS
 # =======================================================================================
 def generate_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -150,7 +150,7 @@ def handle_start(message):
     user_states.pop(user_id, None) 
     user = get_or_create_user(user_id, message.from_user.username, message.from_user.first_name, ref_by)
     
-    msg = (f"⚡ *WELCOME TO ENTERPRISE V8.3* ⚡\n\n💰 *Wallet:* `₹{user[3]:.2f}`\n\nUse the menu below to navigate.")
+    msg = (f"⚡ *WELCOME TO ENTERPRISE V10* ⚡\n\n💰 *Wallet:* `₹{user[3]:.2f}`\n\nUse the menu below to navigate.")
     bot.send_message(message.chat.id, msg, parse_mode="Markdown", reply_markup=generate_main_keyboard(user_id))
 
 @bot.message_handler(func=lambda m: m.text in ["❌ Cancel Action", "👑 --- ADMIN ZONE --- 👑"])
@@ -183,7 +183,7 @@ def handle_daily_bonus(message):
         bot.send_message(message.chat.id, "🛑 You already claimed today. Come back tomorrow.", parse_mode="Markdown")
 
 # =======================================================================================
-# 7. CATEGORY BROWSING & ORDERING
+# 7. CATEGORY BROWSING & FULL ORDERING FLOW (WITH STATS PREVIEW)
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "🛒 Browse Services 🚀")
 def handle_browse_categories(message):
@@ -212,12 +212,56 @@ def handle_back_categories(call):
     except: pass
     handle_browse_categories(call.message)
 
+# THE NEW STATS PREVIEW STEP
 @bot.callback_query_handler(func=lambda c: c.data.startswith("buy_"))
-def handle_buy_start(call):
+def handle_buy_preview(call):
     bot.answer_callback_query(call.id)
-    user_states[call.from_user.id] = {"state": "order_link", "service_id": int(call.data.split("_")[1])}
+    sid = int(call.data.split("_")[1])
+    
+    api_res = call_smm_api('services')
+    if not api_res: return bot.send_message(call.message.chat.id, "❌ API is down. Try later.")
+
+    try:
+        s_data = next(i for i in api_res if int(i['service']) == sid)
+        s_db = execute_db("SELECT margin FROM managed_services WHERE service_id=?", (sid,), fetch=True)
+        margin = s_db[0] if s_db else 1.45
+        final_price = float(s_data['rate']) * margin
+
+        stats_msg = (
+            f"📊 *SERVICE STATS* 📊\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"🏷️ *Service:* {s_data['name']}\n"
+            f"🆔 *ID:* `{sid}`\n"
+            f"💰 *Price (per 1k):* `₹{final_price:.2f}`\n"
+            f"📉 *Limits:* Min `{s_data['min']}` | Max `{s_data['max']}`\n"
+            f"━━━━━━━━━━━━━━━━━━━"
+        )
+        
+        kb = InlineKeyboardMarkup(row_width=1)
+        kb.add(
+            InlineKeyboardButton("✅ Proceed to Order", callback_data=f"confirm_{sid}"),
+            InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")
+        )
+        
+        bot.edit_message_text(stats_msg, call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=kb)
+    except Exception as e:
+        bot.send_message(call.message.chat.id, "❌ Service data unavailable right now.")
+
+@bot.callback_query_handler(func=lambda c: c.data == "cancel_order")
+def cancel_inline_order(call):
+    bot.answer_callback_query(call.id, "Order Cancelled")
     try: bot.delete_message(call.message.chat.id, call.message.message_id)
     except: pass
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("confirm_"))
+def confirm_buy_step(call):
+    bot.answer_callback_query(call.id)
+    sid = int(call.data.split("_")[1])
+    user_states[call.from_user.id] = {"state": "order_link", "service_id": sid}
+    
+    try: bot.delete_message(call.message.chat.id, call.message.message_id)
+    except: pass
+    
     bot.send_message(call.message.chat.id, "🔗 *STEP 1: Send Target Link*", parse_mode="Markdown", reply_markup=cancel_keyboard())
 
 @bot.message_handler(func=lambda m: m.from_user.id in user_states and user_states[m.from_user.id].get("state") == "order_link")
@@ -266,7 +310,7 @@ def handle_order_qty(message):
     user_states.pop(uid, None)
 
 # =======================================================================================
-# 8. THE FAIL-PROOF QR ENGINE (V8.3 FULL FIX)
+# 8. THE FAIL-PROOF QR ENGINE
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "💳 Add Funds (Wallet)")
 def handle_add_funds(message):
@@ -285,14 +329,11 @@ def handle_qr_generation(message):
             
         user_states[uid] = {"state": "fund_screenshot", "amount": amt}
         
-        # 1. SEND TEXT INSTRUCTIONS FIRST
         instruction_msg = (f"💳 *PAYMENT INSTRUCTIONS*\n\n"
                            f"1️⃣ Amount to pay: `₹{amt}`\n"
                            f"2️⃣ UPI ID: `{UPI_ID}`\n\n"
                            f"📸 *AFTER PAYING: Upload your screenshot here.*")
         bot.send_message(message.chat.id, instruction_msg, parse_mode="Markdown", reply_markup=cancel_keyboard())
-        
-        # 2. SHOW TYPING STATUS & GENERATE QR
         bot.send_chat_action(message.chat.id, 'upload_photo')
         
         upi_uri = f"upi://pay?pa={UPI_ID}&pn=SMM+Panel&am={amt}&cu=INR"
@@ -303,20 +344,12 @@ def handle_qr_generation(message):
             response = requests.get(qr_url, timeout=10)
             if response.status_code == 200:
                 img_stream = BytesIO(response.content)
-                img_stream.seek(0) # CRITICAL FIX: Rewinds the image so Telegram doesn't crash
+                img_stream.seek(0)
                 bot.send_photo(message.chat.id, img_stream, caption="☝️ *Scan this QR to auto-fill the exact amount.*", parse_mode="Markdown")
-            else:
-                bot.send_message(message.chat.id, "⚠️ _Could not generate QR. Please manually copy the UPI ID above._", parse_mode="Markdown")
-        except Exception as e:
-            logger.error(f"QR API Error: {e}")
+        except:
             bot.send_message(message.chat.id, "⚠️ _QR Service busy. Please use the UPI ID above._", parse_mode="Markdown")
 
-    except ValueError: 
-        bot.send_message(message.chat.id, "🤨 Please enter numbers only (e.g., 50).")
-    except Exception as e:
-        logger.error(f"Add Funds Error: {e}")
-        bot.send_message(message.chat.id, "❌ System Error. Returning to Menu.", reply_markup=generate_main_keyboard(uid))
-        user_states.pop(uid, None)
+    except ValueError: bot.send_message(message.chat.id, "🤨 Numbers only.")
 
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
@@ -417,11 +450,11 @@ def send_ticket_reply(m):
     user_states.pop(ADMIN_ID, None)
 
 # =======================================================================================
-# 10. ADMIN ZONE - CATEGORIES, SERVICES & MARGINS
+# 10. ADMIN ZONE - BULK ADD SERVICES & CATEGORIES
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "⚙️ Manage Services" and m.from_user.id == ADMIN_ID)
 def handle_manage_svc(m):
-    kb = InlineKeyboardMarkup(row_width=1).add(InlineKeyboardButton("➕ Add Service", callback_data="svc_add"), InlineKeyboardButton("❌ Remove Service", callback_data="svc_del"))
+    kb = InlineKeyboardMarkup(row_width=1).add(InlineKeyboardButton("➕ Add Service(s)", callback_data="svc_add"), InlineKeyboardButton("❌ Remove Service", callback_data="svc_del"))
     bot.send_message(m.chat.id, "⚙️ *SERVICE MANAGER*", parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data == "svc_add")
@@ -434,18 +467,41 @@ def svc_add_1(c):
 def svc_add_2(m):
     if m.text == "❌ Cancel Action": return handle_cancel(m)
     user_states[ADMIN_ID].update({"state": "svc_id", "cat": m.text.strip()})
-    bot.send_message(ADMIN_ID, f"🔢 *Provider Service ID:*", parse_mode="Markdown")
+    bot.send_message(ADMIN_ID, f"🔢 *Send Provider Service IDs*\n(You can paste multiple IDs separated by spaces or newlines like `123 456 789`):", parse_mode="Markdown")
 
+# THE NEW BULK ASSEMBLER
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "svc_id")
 def svc_add_3(m):
     if m.text == "❌ Cancel Action": return handle_cancel(m)
-    sid, cat, margin = m.text.strip(), user_states[ADMIN_ID]["cat"], get_global_margin()
+    
+    cat = user_states[ADMIN_ID]["cat"]
+    margin = get_global_margin()
+    
+    # Clean up input and split into a list of IDs
+    raw_ids = m.text.replace(',', ' ').split()
+    
     api_res = call_smm_api('services')
-    try:
-        s_data = next(i for i in api_res if str(i['service']) == sid)
-        execute_db("INSERT OR REPLACE INTO managed_services (service_id, category, name, rate, margin) VALUES (?,?,?,?,?)", (int(sid), cat, s_data['name'], float(s_data['rate']), margin))
-        bot.send_message(ADMIN_ID, f"✅ *ADDED:* `{s_data['name']}`", parse_mode="Markdown", reply_markup=generate_main_keyboard(ADMIN_ID))
-    except: bot.send_message(ADMIN_ID, f"❌ ID {sid} not found.", reply_markup=generate_main_keyboard(ADMIN_ID))
+    if not api_res: return bot.send_message(ADMIN_ID, "❌ API Failed. Try again.")
+
+    added_count = 0
+    failed_ids = []
+    
+    bot.send_message(ADMIN_ID, f"⏳ Processing `{len(raw_ids)}` IDs... please wait.", parse_mode="Markdown")
+
+    for sid in raw_ids:
+        try:
+            s_data = next(i for i in api_res if str(i['service']) == sid.strip())
+            execute_db("INSERT OR REPLACE INTO managed_services (service_id, category, name, rate, margin) VALUES (?,?,?,?,?)", 
+                       (int(sid), cat, s_data['name'], float(s_data['rate']), margin))
+            added_count += 1
+        except StopIteration:
+            failed_ids.append(sid)
+
+    msg = f"✅ *BULK ADD COMPLETE*\nAdded `{added_count}` services to 📁 *{cat}*."
+    if failed_ids:
+        msg += f"\n\n❌ *Invalid IDs (Not found in API):* {', '.join(failed_ids)}"
+
+    bot.send_message(ADMIN_ID, msg, parse_mode="Markdown", reply_markup=generate_main_keyboard(ADMIN_ID))
     user_states.pop(ADMIN_ID, None)
 
 @bot.callback_query_handler(func=lambda c: c.data == "svc_del")
