@@ -42,7 +42,7 @@ def home():
 
 # --- CREDENTIALS & TOKENS ---
 # Always use environment variables on Render, fallback to hardcoded strings for testing
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEznVpPO0bjGL-WfBjlMmK4tUMg0KB6GqQ')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAF0d6vp2OMQLSw445PJVTsp98JDdVDY7EY')
 API_KEY = os.environ.get('API_KEY', 'w4NIpEsjLOWxMM87R0ZxiPeMgu2ri8ugJeYPmMa206aPmOhDu9NJSl13mvQvPUEZ')
 bot = telebot.TeleBot(BOT_TOKEN)
 
