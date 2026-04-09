@@ -29,7 +29,7 @@ app = Flask(__name__)
 def home(): 
     return "🔥 V8.1 MASTER CONTROL IS ONLINE 🔥"
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAHZsQ3FiMagFfvLtg3HAH5xrTcR3Mmc-F0')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEsyX1DWT9-tLkrUnrDUSWCqwVmkNYfQ9s')
 API_KEY = os.environ.get('API_KEY', 'w4NIpEsjLOWxMM87R0ZxiPeMgu2ri8ugJeYPmMa206aPmOhDu9NJSl13mvQvPUEZ')
 bot = telebot.TeleBot(BOT_TOKEN)
 
