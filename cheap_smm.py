@@ -1,6 +1,7 @@
 """
 =========================================================================================
-🔥 CHEAP SMM PANEL BOT - BULLETPROOF ENTERPRISE V8.1 🔥
+🔥 CHEAP SMM PANEL BOT - BULLETPROOF ENTERPRISE V8.3 🔥
+Fix: Flawless Dynamic QR Code Generation & Memory Buffer Fix
 =========================================================================================
 """
 
@@ -14,6 +15,7 @@ import random
 import os
 import urllib.parse
 import threading
+from io import BytesIO
 from flask import Flask
 from datetime import datetime, timedelta
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -27,9 +29,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 @app.route('/')
 def home(): 
-    return "🔥 V8.1 MASTER CONTROL IS ONLINE 🔥"
+    return "🔥 V8.3 MASTER CONTROL IS ONLINE 🔥"
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEsyX1DWT9-tLkrUnrDUSWCqwVmkNYfQ9s')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAHcMXNJpqHkYZQJhoOX45L9YioMAh7wzaY')
 API_KEY = os.environ.get('API_KEY', 'w4NIpEsjLOWxMM87R0ZxiPeMgu2ri8ugJeYPmMa206aPmOhDu9NJSl13mvQvPUEZ')
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -148,7 +150,7 @@ def handle_start(message):
     user_states.pop(user_id, None) 
     user = get_or_create_user(user_id, message.from_user.username, message.from_user.first_name, ref_by)
     
-    msg = (f"⚡ *WELCOME TO ENTERPRISE V8.1* ⚡\n\n💰 *Wallet:* `₹{user[3]:.2f}`\n\nUse the menu below to navigate.")
+    msg = (f"⚡ *WELCOME TO ENTERPRISE V8.3* ⚡\n\n💰 *Wallet:* `₹{user[3]:.2f}`\n\nUse the menu below to navigate.")
     bot.send_message(message.chat.id, msg, parse_mode="Markdown", reply_markup=generate_main_keyboard(user_id))
 
 @bot.message_handler(func=lambda m: m.text in ["❌ Cancel Action", "👑 --- ADMIN ZONE --- 👑"])
@@ -264,7 +266,7 @@ def handle_order_qty(message):
     user_states.pop(uid, None)
 
 # =======================================================================================
-# 8. AUTO-FILLED QR PAYMENT GATEWAY 
+# 8. THE FAIL-PROOF QR ENGINE (V8.3 FULL FIX)
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "💳 Add Funds (Wallet)")
 def handle_add_funds(message):
@@ -275,17 +277,46 @@ def handle_add_funds(message):
 def handle_qr_generation(message):
     if message.text == "❌ Cancel Action": return handle_cancel(message)
     uid = message.from_user.id
+    
     try:
         amt = float(message.text)
-        if amt < MIN_DEPOSIT: return bot.send_message(message.chat.id, f"🚫 Min `₹{MIN_DEPOSIT}`.")
+        if amt < MIN_DEPOSIT: 
+            return bot.send_message(message.chat.id, f"🚫 Minimum deposit is `₹{MIN_DEPOSIT}`.", parse_mode="Markdown")
             
         user_states[uid] = {"state": "fund_screenshot", "amount": amt}
-        upi_uri = f"upi://pay?pa={UPI_ID}&pn=Panel&am={amt}&cu=INR"
-        qr_url = f"https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl={urllib.parse.quote(upi_uri)}&choe=UTF-8"
         
-        caption = f"💳 *SCAN TO PAY ₹{amt}*\n\n📸 *AFTER PAYING: Upload your screenshot below.*"
-        bot.send_photo(message.chat.id, qr_url, caption=caption, parse_mode="Markdown")
-    except ValueError: bot.send_message(message.chat.id, "🤨 Numbers only.")
+        # 1. SEND TEXT INSTRUCTIONS FIRST
+        instruction_msg = (f"💳 *PAYMENT INSTRUCTIONS*\n\n"
+                           f"1️⃣ Amount to pay: `₹{amt}`\n"
+                           f"2️⃣ UPI ID: `{UPI_ID}`\n\n"
+                           f"📸 *AFTER PAYING: Upload your screenshot here.*")
+        bot.send_message(message.chat.id, instruction_msg, parse_mode="Markdown", reply_markup=cancel_keyboard())
+        
+        # 2. SHOW TYPING STATUS & GENERATE QR
+        bot.send_chat_action(message.chat.id, 'upload_photo')
+        
+        upi_uri = f"upi://pay?pa={UPI_ID}&pn=SMM+Panel&am={amt}&cu=INR"
+        encoded_uri = urllib.parse.quote(upi_uri)
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={encoded_uri}"
+        
+        try:
+            response = requests.get(qr_url, timeout=10)
+            if response.status_code == 200:
+                img_stream = BytesIO(response.content)
+                img_stream.seek(0) # CRITICAL FIX: Rewinds the image so Telegram doesn't crash
+                bot.send_photo(message.chat.id, img_stream, caption="☝️ *Scan this QR to auto-fill the exact amount.*", parse_mode="Markdown")
+            else:
+                bot.send_message(message.chat.id, "⚠️ _Could not generate QR. Please manually copy the UPI ID above._", parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"QR API Error: {e}")
+            bot.send_message(message.chat.id, "⚠️ _QR Service busy. Please use the UPI ID above._", parse_mode="Markdown")
+
+    except ValueError: 
+        bot.send_message(message.chat.id, "🤨 Please enter numbers only (e.g., 50).")
+    except Exception as e:
+        logger.error(f"Add Funds Error: {e}")
+        bot.send_message(message.chat.id, "❌ System Error. Returning to Menu.", reply_markup=generate_main_keyboard(uid))
+        user_states.pop(uid, None)
 
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
@@ -386,7 +417,7 @@ def send_ticket_reply(m):
     user_states.pop(ADMIN_ID, None)
 
 # =======================================================================================
-# 10. ADMIN ZONE - CATEGORIES, SERVICES & MARGIN ADJUSTER
+# 10. ADMIN ZONE - CATEGORIES, SERVICES & MARGINS
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "⚙️ Manage Services" and m.from_user.id == ADMIN_ID)
 def handle_manage_svc(m):
