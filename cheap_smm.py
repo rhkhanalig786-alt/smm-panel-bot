@@ -10,7 +10,7 @@ app = Flask(__name__)
 @app.route('/')
 def home(): return "🔥 ENTERPRISE V11.2 MASTER ONLINE 🔥"
 
-BOT_TOKEN = '8228287584:AAEo7o4vYgRi5tCTUg4COzpo5DyS9LAgnWM'
+BOT_TOKEN = '8228287584:AAFZ2-wY9Y9h0MYseUj_uGD_JoW-WExS70I'
 API_KEY = 'rB105ycZUiN4wLIV7BUuOpGGZgWdbrXVw1jg1RKQ0hRbU30OEhi2Dnefb1Vqq430'
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True)
 
