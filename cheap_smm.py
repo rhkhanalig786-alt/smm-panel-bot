@@ -19,8 +19,8 @@ app = Flask(__name__)
 def home(): return "🔥 V11.5 ENTERPRISE MASTER ONLINE 🔥"
 
 # Replace with os.environ.get in production if you hide keys on Render
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAHTy_YIDs13QMLooX5XEdsqvILEi6B7new')
-API_KEY = os.environ.get('API_KEY', '2n27R3Nv4Tibzli6MI0yKQWqgiCRH7JLcwkLTKECXDe6nnxFRFgDg5a21ifPJCiQ')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFp5l3v3ELMxincSd2f3C_e0n8ZIuVQbUE')
+API_KEY = os.environ.get('API_KEY', 'CgsHn3jZQMUE5mmlsrkN9zRACD5q8n9pucgNwySvLWxzv0Davu3sOL6A3297ak5d')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
@@ -473,14 +473,45 @@ def m_svc_3(m):
     bot.send_message(ADMIN_ID, f"✅ Successfully added {count} services to {user_states[ADMIN_ID]['cat']}.", reply_markup=main_kb(ADMIN_ID))
     user_states.pop(ADMIN_ID, None)
 
+
 # =======================================================================================
-# 11. STARTUP (409 CONFLICT FIX APPLIED)
+# 11. KEEP-ALIVE SYSTEM (RENDER FIX)
+# =======================================================================================
+def self_ping():
+    while True:
+        try:
+            # Self-ping logic based on Render's external hostname
+            host = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+            if host:
+                requests.get(f"https://{host}/")
+                logging.info("Self-ping successful. Keeping bot alive.")
+        except Exception as e:
+            logging.error(f"Self-ping failed: {e}")
+        time.sleep(600) # Ping every 10 minutes
+
+
+# =======================================================================================
+# 12. STARTUP (409 CONFLICT & THREADING FIX APPLIED)
 # =======================================================================================
 if __name__ == '__main__':
-    # Fix for 409 Conflict: Removes any stuck webhooks/polling sessions
-    try: bot.remove_webhook()
-    except: pass
+    # 1. Initialize Database first
+    init_database()
     
-    # Start the engine
-    threading.Thread(target=lambda: (init_database(), bot.infinity_polling(skip_pending=True, timeout=20)), daemon=True).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    # 2. Fix for 409 Conflict: Removes any stuck webhooks before polling starts
+    try: 
+        bot.remove_webhook()
+        time.sleep(1)
+    except: 
+        pass
+    
+    # 3. Start Bot in a Background Thread
+    bot_thread = threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True, timeout=60))
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    # 4. Start Self-Ping in a Background Thread
+    threading.Thread(target=self_ping, daemon=True).start()
+    
+    # 5. Start Flask on the MAIN thread so Render can monitor it
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
