@@ -20,7 +20,7 @@ def home(): return "🔥 V11.5 ENTERPRISE MASTER ONLINE 🔥"
 
 # Replace with os.environ.get in production if you hide keys on Render
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFp5l3v3ELMxincSd2f3C_e0n8ZIuVQbUE')
-API_KEY = os.environ.get('API_KEY', 'CgsHn3jZQMUE5mmlsrkN9zRACD5q8n9pucgNwySvLWxzv0Davu3sOL6A3297ak5d')
+API_KEY = os.environ.get('API_KEY', 'g4dT6WYZ8o5OcHPdDMzNMYUrV1mRUbaeGDPChfP1xWW9uuXJ9Vr2FP53dNA2fjxS')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
@@ -108,7 +108,7 @@ def main_kb(uid):
         kb.add("🏦 API Ledger", "🎟️ Open Tickets")
     return kb
 
-def cancel_kb(): return ReplyKeyboardMarkup(resize_keyboard=True).add("❌ Cancel")
+def cancel_kb(): return ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add("🔙 Back", "❌ Cancel")
 
 # =======================================================================================
 # 5. CORE HANDLERS
@@ -133,6 +133,28 @@ def h_start(m):
 def h_cancel(m):
     user_states.pop(m.from_user.id, None)
     bot.send_message(m.chat.id, "🚫 Action Cancelled.", reply_markup=main_kb(m.from_user.id))
+
+@bot.message_handler(func=lambda m: m.text == "🔙 Back")
+def h_back(m):
+    uid = m.from_user.id
+    state = user_states.get(uid, {}).get("state")
+    
+    if state == "get_qty":
+        user_states[uid]["state"] = "get_link"
+        bot.send_message(m.chat.id, "🔗 *STEP 1: Send Target Link*", parse_mode="Markdown", reply_markup=cancel_kb())
+    elif state == "get_link":
+        user_states.pop(uid, None)
+        bot.send_message(m.chat.id, "🏠 Returned to Menu.", reply_markup=main_kb(uid))
+        h_browse(m)
+    elif state == "fund_ss":
+        user_states[uid]["state"] = "fund_amt"
+        bot.send_message(m.chat.id, f"💸 *Enter deposit amount (₹):*\n(Minimum `₹{MIN_DEPOSIT}`)", parse_mode="Markdown", reply_markup=cancel_kb())
+    elif state == "svc_ids":
+        user_states[uid]["state"] = "svc_cat"
+        bot.send_message(m.chat.id, "📁 Category Name (e.g. Instagram):", reply_markup=cancel_kb())
+    else:
+        user_states.pop(uid, None)
+        bot.send_message(m.chat.id, "🏠 Returned to Main Menu.", reply_markup=main_kb(uid))
 
 @bot.message_handler(func=lambda m: m.text == "💰 My Profile")
 def h_profile(m):
@@ -161,7 +183,15 @@ def h_do_compare(c):
     svcs = execute_db("SELECT name, (rate*margin) as p FROM managed_services WHERE category=? ORDER BY p ASC", (cat,), fetch_all=True)
     if len(svcs) < 2: return bot.answer_callback_query(c.id, "Need 2+ services to compare.", show_alert=True)
     msg = f"⚖️ *{cat.upper()} COMPARISON*\n\n🟢 *Cheapest Option:*\n{svcs[0][0]}\n💰 `₹{svcs[0][1]:.2f}/1k`\n\n💎 *Best Quality:*\n{svcs[-1][0]}\n💰 `₹{svcs[-1][1]:.2f}/1k`"
-    bot.edit_message_text(msg, c.message.chat.id, c.message.message_id, parse_mode="Markdown")
+    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Back", callback_data="back_compare"))
+    bot.edit_message_text(msg, c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "back_compare")
+def h_back_compare(c):
+    cats = execute_db("SELECT DISTINCT category FROM managed_services", fetch_all=True)
+    kb = InlineKeyboardMarkup(row_width=2)
+    for cat in cats: kb.add(InlineKeyboardButton(f"⚖️ {cat[0]}", callback_data=f"comp_{cat[0]}"))
+    bot.edit_message_text("⚖️ Select category to compare Cheap vs High-Quality:", c.message.chat.id, c.message.message_id, reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text == "🛒 Browse Services 🚀")
 def h_browse(m):
@@ -171,12 +201,21 @@ def h_browse(m):
     for c in cats: kb.add(InlineKeyboardButton(f"📁 {c[0]}", callback_data=f"cat_{c[0]}"))
     bot.send_message(m.chat.id, "🛒 *Select Category:*", parse_mode="Markdown", reply_markup=kb)
 
+@bot.callback_query_handler(func=lambda c: c.data == "back_browse")
+def h_back_browse(c):
+    cats = execute_db("SELECT DISTINCT category FROM managed_services", fetch_all=True)
+    if not cats: return bot.answer_callback_query(c.id, "Store is empty.")
+    kb = InlineKeyboardMarkup(row_width=2)
+    for cat in cats: kb.add(InlineKeyboardButton(f"📁 {cat[0]}", callback_data=f"cat_{cat[0]}"))
+    bot.edit_message_text("🛒 *Select Category:*", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
+
 @bot.callback_query_handler(func=lambda c: c.data.startswith("cat_"))
 def h_cat(c):
     cat = c.data.split("_")[1]
     svcs = execute_db("SELECT service_id, name, rate, margin FROM managed_services WHERE category=?", (cat,), fetch_all=True)
     kb = InlineKeyboardMarkup(row_width=1)
     for s in svcs: kb.add(InlineKeyboardButton(f"🔥 {s[1]} - ₹{s[2]*s[3]:.2f}/1k", callback_data=f"stats_{s[0]}"))
+    kb.add(InlineKeyboardButton("🔙 Back to Categories", callback_data="back_browse"))
     bot.edit_message_text(f"📁 *{cat.upper()} SERVICES*", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("stats_"))
@@ -185,9 +224,13 @@ def h_stats(c):
     res = call_api('services')
     try:
         s = next(i for i in res if int(i['service']) == sid)
-        m = execute_db("SELECT margin FROM managed_services WHERE service_id=?", (sid,), fetch=True)[0]
+        db_res = execute_db("SELECT margin, category FROM managed_services WHERE service_id=?", (sid,), fetch=True)
+        m = db_res[0]
+        cat = db_res[1]
         msg = f"📊 *SERVICE STATS*\n━━━━━━━━━━━━━━━━━━━\n🏷️ *Service:* {s['name']}\n🆔 *ID:* `{sid}`\n💰 *Price:* `₹{float(s['rate'])*m:.2f}/1k`\n📉 *Limits:* Min `{s['min']}` | Max `{s['max']}`\n━━━━━━━━━━━━━━━━━━━"
-        kb = InlineKeyboardMarkup().add(InlineKeyboardButton("✅ Proceed to Order", callback_data=f"buy_{sid}"), InlineKeyboardButton("❌ Cancel", callback_data="cancel_order"))
+        kb = InlineKeyboardMarkup(row_width=1)
+        kb.add(InlineKeyboardButton("✅ Proceed to Order", callback_data=f"buy_{sid}"))
+        kb.add(InlineKeyboardButton("🔙 Back", callback_data=f"cat_{cat}"), InlineKeyboardButton("❌ Cancel", callback_data="cancel_order"))
         bot.edit_message_text(msg, c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
     except: bot.answer_callback_query(c.id, "Error fetching stats.")
 
@@ -380,7 +423,7 @@ def h_treply(m):
 # =======================================================================================
 # 10. ADMIN COMMANDS (Verify, Addbal, Ban, Ledger, Broadcast)
 # =======================================================================================
-@bot.message_handler(commands=['addbal', 'verify', 'ban'])
+@bot.message_handler(commands=['addbal', 'verify', 'ban', 'remove', 'apiaddbal'])
 def admin_cmds(m):
     if m.from_user.id != ADMIN_ID: return
     try:
@@ -396,7 +439,13 @@ def admin_cmds(m):
         elif '/ban' in m.text: 
             execute_db("UPDATE users SET is_banned=1 WHERE user_id=?", (int(p[1]),))
             bot.send_message(ADMIN_ID, f"✅ User {p[1]} Banned.")
-    except: bot.send_message(ADMIN_ID, "❌ Format error. Use: /addbal [ID] [Amt], /verify [ID], /ban [ID]")
+        elif '/remove' in m.text:
+            execute_db("DELETE FROM managed_services WHERE service_id=?", (int(p[1]),))
+            bot.send_message(ADMIN_ID, f"✅ Service ID {p[1]} removed from bot.")
+        elif '/apiaddbal' in m.text:
+            res = call_api('add_funds', {'amount': float(p[1])})
+            bot.send_message(ADMIN_ID, f"✅ API Balance Add Request Sent.\nResponse: {res}")
+    except: bot.send_message(ADMIN_ID, "❌ Format error. Use:\n/addbal [ID] [Amt]\n/verify [ID]\n/ban [ID]\n/remove [ServiceID]\n/apiaddbal [Amount]")
 
 @bot.message_handler(func=lambda m: m.text == "🎟️ Create Promo" and m.from_user.id == ADMIN_ID)
 def h_create_promo(m):
