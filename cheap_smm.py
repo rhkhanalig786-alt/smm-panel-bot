@@ -19,7 +19,7 @@ app = Flask(__name__)
 def home(): return "🔥 V11.5 ENTERPRISE MASTER ONLINE 🔥"
 
 # Replace with os.environ.get in production if you hide keys on Render
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFp5l3v3ELMxincSd2f3C_e0n8ZIuVQbUE')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEXXA4xP5FAm0sEWTxRZ20_3TFJViB_ESk')
 API_KEY = os.environ.get('API_KEY', 'g4dT6WYZ8o5OcHPdDMzNMYUrV1mRUbaeGDPChfP1xWW9uuXJ9Vr2FP53dNA2fjxS')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
