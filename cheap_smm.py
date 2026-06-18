@@ -19,12 +19,12 @@ app = Flask(__name__)
 def home(): return "🔥 V11.5 ENTERPRISE MASTER ONLINE 🔥"
 
 # Replace with os.environ.get in production if you hide keys on Render
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFO8CGBnPIQgtttx1gPOCPwbw_eE9tgw4Q')
-API_KEY = os.environ.get('API_KEY', 'db7daa7623047c0911a7269d1f4650bd')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAH6AnzhQvKjnZtHaEaxDjFC8a1nX_AZpFg')
+API_KEY = os.environ.get('API_KEY', 'TKTYetchPbX2R1YvA7k8yL4PfbX71C58CpcVeORWeW19hSEKE7tJR8ScrVbcaue8')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
-API_URL = "https://iggrowbot.com/api/v2"
+API_URL = "https://indiansmmprovider.in/api/v2"
 ADMIN_ID = 6034840006  
 UPI_ID = "rahikhann@fam"
 
