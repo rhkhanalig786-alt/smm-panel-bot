@@ -19,7 +19,7 @@ app = Flask(__name__)
 @app.route('/')
 def home(): return "🔥 V12 ULTIMATE ONLINE 🔥"
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAE91T9g5D85H7ajnSb73KVzEOUeFbvBuxg')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEgtt1VWas1eyxESgBMz0xWYgKBImtbUO8')
 API_KEY = os.environ.get('API_KEY', 'TKTYetchPbX2R1YvA7k8yL4PfbX71C58CpcVeORWeW19hSEKE7tJR8ScrVbcaue8')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
