@@ -1,6 +1,8 @@
 """
 =========================================================================================
-🔥 CHEAP SMM PANEL BOT - ENTERPRISE V12 ULTIMATE (ALL FEATURES) 🔥
+🔥 CHEAP SMM PANEL BOT - ENTERPRISE V12 ULTIMATE (FULLY FIXED) 🔥
+=========================================================================================
+ALL ADMIN BUTTONS FIXED + SUPPORT VIA @itzdevrahi
 =========================================================================================
 """
 
@@ -19,7 +21,7 @@ app = Flask(__name__)
 @app.route('/')
 def home(): return "🔥 V12 ULTIMATE ONLINE 🔥"
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEgtt1VWas1eyxESgBMz0xWYgKBImtbUO8')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAEeKJtYAD7fG4Dn-tOx9FGtU_Lz3lwwV1I')
 API_KEY = os.environ.get('API_KEY', 'TKTYetchPbX2R1YvA7k8yL4PfbX71C58CpcVeORWeW19hSEKE7tJR8ScrVbcaue8')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
@@ -27,6 +29,7 @@ bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 API_URL = "https://indiansmmprovider.in/api/v2"
 ADMIN_ID = 6034840006
 UPI_ID = "rahikhann@fam"
+SUPPORT_USERNAME = "@itzdevrahi"
 
 CHANNEL_ID = "@cspnotice"
 CHANNEL_LINK = "https://t.me/cspnotice"
@@ -36,7 +39,7 @@ MIN_DEPOSIT = 10.0
 user_states = {}
 
 # =======================================================================================
-# 2. DATABASE ENGINE (UPDATED FOR ALL FEATURES)
+# 2. DATABASE ENGINE
 # =======================================================================================
 def execute_db(query, params=(), fetch=False, fetch_all=False, return_id=False):
     try:
@@ -65,7 +68,7 @@ def init_database():
     execute_db("CREATE TABLE IF NOT EXISTS promo_redeems (user_id INTEGER, code TEXT, PRIMARY KEY(user_id, code))")
     execute_db("CREATE TABLE IF NOT EXISTS tickets (ticket_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, message TEXT, status TEXT DEFAULT 'OPEN', reply TEXT, replied_at TIMESTAMP)")
 
-    # New tables for features
+    # New tables
     execute_db("CREATE TABLE IF NOT EXISTS favorites (user_id INTEGER, service_id INTEGER, PRIMARY KEY(user_id, service_id))")
     execute_db("CREATE TABLE IF NOT EXISTS referrals (referrer_id INTEGER, referred_id INTEGER, total_earned REAL DEFAULT 0, PRIMARY KEY(referrer_id, referred_id))")
     execute_db("CREATE TABLE IF NOT EXISTS order_templates (template_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, service_id INTEGER, quantity INTEGER, link_format TEXT)")
@@ -82,7 +85,7 @@ def init_database():
     if not execute_db("SELECT value FROM settings WHERE key='flash_sale_multiplier'", fetch=True):
         execute_db("INSERT INTO settings (key, value) VALUES ('flash_sale_multiplier', '0.8')")
 
-    # Seed knowledge base if empty
+    # Seed knowledge base
     if not execute_db("SELECT COUNT(*) FROM knowledge_base", fetch=True)[0]:
         articles = [
             ("Getting Started", "To place your first order, tap 'Browse Services', choose a category, select a service, and follow the prompts.", "basics"),
@@ -124,7 +127,7 @@ def generate_referral_code(user_id):
     return code
 
 # =======================================================================================
-# 4. KEYBOARDS (UPDATED WITH NEW BUTTONS)
+# 4. KEYBOARDS
 # =======================================================================================
 def main_kb(uid):
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -145,7 +148,7 @@ def main_kb(uid):
 def cancel_kb(): return ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add("🔙 Back", "❌ Cancel")
 
 # =======================================================================================
-# 5. CORE HANDLERS (UPDATED)
+# 5. CORE HANDLERS
 # =======================================================================================
 @bot.message_handler(commands=['start'])
 def h_start(m):
@@ -156,7 +159,6 @@ def h_start(m):
 
     u = execute_db("SELECT * FROM users WHERE user_id=?", (uid,), fetch=True)
     if not u:
-        # New user: check referral
         referrer = None
         if len(m.text.split()) > 1 and m.text.split()[1].startswith('ref_'):
             try: referrer = int(m.text.split()[1].replace('ref_', ''))
@@ -170,7 +172,6 @@ def h_start(m):
     elif u[6] == 1:
         return bot.send_message(m.chat.id, "🚫 You have been banned.")
 
-    # Show live activity and tips on start
     activity_msg = get_live_activity()
     bot.send_message(m.chat.id, activity_msg, parse_mode="Markdown")
     tip = get_tip_of_the_day()
@@ -198,6 +199,9 @@ def h_back(m):
     elif state == "svc_ids":
         user_states[uid]["state"] = "svc_cat"
         bot.send_message(m.chat.id, "📁 Category Name (e.g. Instagram):", reply_markup=cancel_kb())
+    elif state == "broad":
+        user_states.pop(uid, None)
+        bot.send_message(m.chat.id, "🏠 Broadcast cancelled.", reply_markup=main_kb(uid))
     else:
         user_states.pop(uid, None)
         bot.send_message(m.chat.id, "🏠 Returned to Main Menu.", reply_markup=main_kb(uid))
@@ -235,7 +239,7 @@ def kb_article(c):
     bot.send_message(c.message.chat.id, f"*{art[0]}*\n\n{art[1]}", parse_mode="Markdown")
 
 # =======================================================================================
-# 6. FEATURE: SERVICE FAVORITES (5)
+# 6. SERVICE FAVORITES
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "⭐ My Favorites")
 def h_favs(m):
@@ -262,7 +266,7 @@ def toggle_fav(c):
         bot.answer_callback_query(c.id, "Added to favorites!")
 
 # =======================================================================================
-# 7. BROWSING & ORDERING FLOW (WITH STATS PREVIEW + DELIVERY ESTIMATES)
+# 7. BROWSING & ORDERING FLOW
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "🛒 Browse Services 🚀")
 def h_browse(m):
@@ -284,6 +288,13 @@ def h_cat(c):
     kb.add(InlineKeyboardButton("🔙 Back to Categories", callback_data="back_browse"))
     bot.edit_message_text(f"📁 *{cat.upper()} SERVICES*", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
 
+@bot.callback_query_handler(func=lambda c: c.data == "back_browse")
+def h_back_browse(c):
+    cats = execute_db("SELECT DISTINCT category FROM managed_services WHERE disabled=0", fetch_all=True)
+    kb = InlineKeyboardMarkup(row_width=2)
+    for cat in cats: kb.add(InlineKeyboardButton(f"📁 {cat[0]}", callback_data=f"cat_{cat[0]}"))
+    bot.edit_message_text("🛒 *Select Category:*", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
+
 @bot.callback_query_handler(func=lambda c: c.data.startswith("stats_"))
 def h_stats(c):
     sid = int(c.data.split("_")[1])
@@ -293,7 +304,6 @@ def h_stats(c):
         s = next(i for i in res if int(i['service']) == sid)
         db_res = execute_db("SELECT margin, category, success_rate, avg_delivery_minutes FROM managed_services WHERE service_id=?", (sid,), fetch=True)
         m, cat, succ, avg_del = db_res
-        # Calculate estimated delivery
         est = f"{avg_del} mins" if avg_del else "N/A"
         msg = f"📊 *SERVICE STATS*\n━━━━━━━━━━━━━━━━━━━\n🏷️ {s['name']}\n🆔 `{sid}`\n💰 Price: `₹{float(s['rate'])*m:.2f}/1k`\n📉 Limits: {s['min']}-{s['max']}\n⭐ Success Rate: {succ}%\n🚚 Avg Delivery: {est}"
         kb = InlineKeyboardMarkup(row_width=2)
@@ -303,7 +313,11 @@ def h_stats(c):
         bot.edit_message_text(msg, c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
     except: bot.answer_callback_query(c.id, "Error fetching stats.")
 
-# Order flow remains same
+@bot.callback_query_handler(func=lambda c: c.data == "cancel_order")
+def h_cancel_order(c):
+    try: bot.delete_message(c.message.chat.id, c.message.message_id)
+    except: pass
+
 @bot.callback_query_handler(func=lambda c: c.data.startswith("buy_"))
 def h_buy(c):
     sid = int(c.data.split("_")[1])
@@ -328,7 +342,6 @@ def h_qty(m):
     if qty < int(s_data['min']) or qty > int(s_data['max']):
         return bot.send_message(m.chat.id, f"🚫 Limits: {s_data['min']} - {s_data['max']}")
     s_db = execute_db("SELECT rate, margin FROM managed_services WHERE service_id=?", (state["sid"],), fetch=True)
-    # Smart pricing: check flash sale
     flash_active = execute_db("SELECT value FROM settings WHERE key='flash_sale_active'", fetch=True)[0] == '1'
     flash_mult = float(execute_db("SELECT value FROM settings WHERE key='flash_sale_multiplier'", fetch=True)[0])
     margin = s_db[1] * flash_mult if flash_active else s_db[1]
@@ -343,7 +356,6 @@ def h_qty(m):
         execute_db("UPDATE users SET balance=balance-?, total_spent=total_spent+? WHERE user_id=?", (cost, cost, uid))
         execute_db("INSERT INTO orders (user_id, api_order_id, service_id, quantity, cost) VALUES (?,?,?,?,?)",
                    (uid, api_res['order'], state["sid"], qty, cost))
-        # Update service orders count
         execute_db("UPDATE managed_services SET orders_count=orders_count+1 WHERE service_id=?", (state["sid"],))
         bot.send_message(m.chat.id, f"✅ *ORDER PLACED*\n🧾 ID: `{api_res['order']}`\n💰 Cost: ₹{cost:.2f}", parse_mode="Markdown")
         threading.Thread(target=log_order, args=(m.from_user.username, s_data['name'], qty)).start()
@@ -351,7 +363,7 @@ def h_qty(m):
     user_states.pop(uid, None)
 
 # =======================================================================================
-# 8. FEATURE: ENHANCED COMPARISON (13)
+# 8. ENHANCED COMPARISON
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "⚖️ Compare Services")
 def h_compare_new(m):
@@ -366,7 +378,6 @@ def comp_cat(c):
     cat = c.data.split("_")[1]
     svcs = execute_db("SELECT service_id, name, rate, margin, success_rate, avg_delivery_minutes FROM managed_services WHERE category=? AND disabled=0", (cat,), fetch_all=True)
     if len(svcs) < 2: return bot.answer_callback_query(c.id, "Need at least 2 services to compare.")
-    # Show comparison table
     msg = f"⚖️ *{cat.upper()} COMPARISON*\n\n"
     msg += "`{:<25} {:>8} {:>8} {:>8}`\n".format("Service", "Price", "Success", "Speed")
     msg += "`" + "-"*50 + "`\n"
@@ -376,14 +387,20 @@ def comp_cat(c):
         succ = f"{s[4]}%"
         speed = f"{s[5]}m" if s[5] else "N/A"
         msg += f"`{name:<25} {price:>8} {succ:>8} {speed:>8}`\n"
-    # Add best value indicator
     best = min(svcs, key=lambda x: x[2]*x[3] / (x[4]*0.01 + 0.1))
     msg += f"\n💡 *Best Value:* {best[1]}"
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Back", callback_data="back_compare"))
     bot.edit_message_text(msg, c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
 
+@bot.callback_query_handler(func=lambda c: c.data == "back_compare")
+def h_back_compare(c):
+    cats = execute_db("SELECT DISTINCT category FROM managed_services WHERE disabled=0", fetch_all=True)
+    kb = InlineKeyboardMarkup(row_width=2)
+    for cat in cats: kb.add(InlineKeyboardButton(f"⚖️ {cat[0]}", callback_data=f"compcat_{cat[0]}"))
+    bot.edit_message_text("⚖️ *Select category to compare services:*", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
+
 # =======================================================================================
-# 9. FEATURE: ORDER TEMPLATES (15)
+# 9. ORDER TEMPLATES
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "📋 My Templates")
 def h_templates(m):
@@ -433,19 +450,49 @@ def use_template(c):
     user_states[uid] = {"state": "get_link", "sid": t[0], "qty_preset": t[1]}
     bot.send_message(c.message.chat.id, "🔗 *Send target link (template will use pre-set quantity)*", parse_mode="Markdown", reply_markup=cancel_kb())
 
-# Override link handler to use preset quantity
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "get_link" and 'qty_preset' in user_states.get(m.from_user.id, {}))
 def h_link_template(m):
     uid = m.from_user.id
     state = user_states[uid]
     state["link"] = m.text
     state["state"] = "get_qty"
-    # Skip asking quantity, use preset
     m.text = str(state["qty_preset"])
-    h_qty(m)  # call existing qty handler
+    h_qty(m)
 
 # =======================================================================================
-# 10. FEATURE: REFERRAL SYSTEM (7)
+# 10. ORDER HISTORY (WORKING)
+# =======================================================================================
+@bot.message_handler(func=lambda m: m.text == "📦 Order History")
+def h_hist(m):
+    uid = m.from_user.id
+    orders = execute_db("SELECT api_order_id, quantity, cost, status FROM orders WHERE user_id=? ORDER BY placed_time DESC LIMIT 5", (uid,), fetch_all=True)
+    if not orders: return bot.send_message(m.chat.id, "No orders found.")
+    kb = InlineKeyboardMarkup()
+    for o in orders:
+        kb.add(InlineKeyboardButton(f"🔄 {o[0][:10]}... ({o[3]}) - ₹{o[2]:.2f}", callback_data=f"tr_{o[0]}"))
+    bot.send_message(m.chat.id, "📦 *Recent Orders:* Click to track status.", parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("tr_"))
+def h_track(c):
+    oid = c.data.split("_")[1]
+    res = call_api('status', {'order': oid})
+    if res and 'status' in res:
+        kb = InlineKeyboardMarkup()
+        if res['status'].upper() in ["COMPLETED", "PARTIAL"]:
+            kb.add(InlineKeyboardButton("♻️ Request Refill", callback_data=f"ref_{oid}"))
+        bot.send_message(c.message.chat.id, f"📊 *STATUS:* `{res['status'].upper()}`\n📉 Remains: `{res.get('remains', 0)}`", parse_mode="Markdown", reply_markup=kb)
+    else:
+        bot.answer_callback_query(c.id, "Could not fetch status.")
+    bot.answer_callback_query(c.id)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("ref_"))
+def h_refill(c):
+    res = call_api('refill', {'order': c.data.split("_")[1]})
+    if res and 'refill' in res: bot.answer_callback_query(c.id, f"✅ Refill Requested! ID: {res['refill']}", show_alert=True)
+    else: bot.answer_callback_query(c.id, "❌ Refill unavailable for this order.", show_alert=True)
+
+# =======================================================================================
+# 11. REFERRAL SYSTEM
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "👥 Referral Program")
 def h_referral(m):
@@ -457,53 +504,66 @@ def h_referral(m):
     msg = f"👥 *REFERRAL PROGRAM*\n━━━━━━━━━━━━━━━━━━━\n🔗 Your Link: `{link}`\n👤 Referrals: {ref_count}\n💰 Earned: ₹{earnings:.2f}\n\n💎 *Earn 5% of every deposit your referrals make!*"
     bot.send_message(m.chat.id, msg, parse_mode="Markdown")
 
-# Referral bonus added during deposit approval (see escrow)
-
 # =======================================================================================
-# 11. FEATURE: SMART NOTIFICATIONS (17)
+# 12. SUPPORT (VIA @itzdevrahi + TICKETS)
 # =======================================================================================
-def can_notify(uid, notif_type):
-    settings = execute_db("SELECT * FROM user_notify_settings WHERE user_id=?", (uid,), fetch=True)
-    if not settings: return True  # default allow all
-    col = {'order': 1, 'promo': 2, 'tip': 3}
-    if notif_type in col and settings[col[notif_type]] == 0: return False
-    if settings[4] and settings[5]:
-        now = datetime.now().time()
-        quiet_start = datetime.strptime(settings[4], "%H:%M").time()
-        quiet_end = datetime.strptime(settings[5], "%H:%M").time()
-        if quiet_start <= now <= quiet_end: return False
-    return True
-
-def send_notification(uid, msg, notif_type='order'):
-    if can_notify(uid, notif_type):
-        try: bot.send_message(uid, msg, parse_mode="Markdown")
-        except: pass
-
-@bot.message_handler(commands=['notify'])
-def notify_settings(m):
-    uid = m.from_user.id
-    settings = execute_db("SELECT * FROM user_notify_settings WHERE user_id=?", (uid,), fetch=True)
-    if not settings: execute_db("INSERT INTO user_notify_settings (user_id) VALUES (?)", (uid,))
+@bot.message_handler(func=lambda m: m.text == "📞 Support")
+def h_support(m):
     kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton("Order Updates: ON" if (not settings or settings[1]) else "Order Updates: OFF", callback_data="tog_order"))
-    kb.add(InlineKeyboardButton("Promotions: ON" if (settings and settings[2]) else "Promotions: OFF", callback_data="tog_promo"))
-    kb.add(InlineKeyboardButton("Tips: ON" if (settings and settings[3]) else "Tips: OFF", callback_data="tog_tip"))
-    kb.add(InlineKeyboardButton("Quiet Hours: Set", callback_data="quiet_set"))
-    bot.send_message(m.chat.id, "🔔 *Notification Settings*", parse_mode="Markdown", reply_markup=kb)
+    kb.add(InlineKeyboardButton("💬 Message @itzdevrahi", url=f"https://t.me/{SUPPORT_USERNAME.replace('@','')}"))
+    kb.add(InlineKeyboardButton("🎟️ Create Support Ticket", callback_data="new_ticket"))
+    bot.send_message(m.chat.id, "📞 *Support Options*", parse_mode="Markdown", reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("tog_"))
-def toggle_notify(c):
+@bot.callback_query_handler(func=lambda c: c.data == "new_ticket")
+def new_ticket(c):
     uid = c.from_user.id
-    field = c.data.split("_")[1]
-    col = {'order':1, 'promo':2, 'tip':3}[field]
-    execute_db(f"UPDATE user_notify_settings SET {field}_updates = 1 - {field}_updates WHERE user_id=?", (uid,))
-    bot.answer_callback_query(c.id, "Toggled!")
+    user_states[uid] = {"state": "ticket_msg"}
+    bot.send_message(c.message.chat.id, "📝 *Please type your issue/message:*", parse_mode="Markdown", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "ticket_msg")
+def ticket_message(m):
+    uid = m.from_user.id
+    msg = m.text
+    tid = execute_db("INSERT INTO tickets (user_id, message) VALUES (?,?)", (uid, msg), return_id=True)
+    bot.send_message(m.chat.id, f"✅ Ticket #{tid} created. Our support team will reply soon.", reply_markup=main_kb(uid))
+    # Notify admin
+    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("Reply", callback_data=f"rept_{tid}_{uid}"))
+    bot.send_message(ADMIN_ID, f"🚨 *NEW TICKET #{tid}* from `{uid}`\n📝 {msg}", parse_mode="Markdown", reply_markup=kb)
+    user_states.pop(uid, None)
+
+# Admin: Open Tickets button
+@bot.message_handler(func=lambda m: m.text == "🎟️ Open Tickets" and m.from_user.id == ADMIN_ID)
+def admin_open_tickets(m):
+    tickets = execute_db("SELECT ticket_id, user_id, message FROM tickets WHERE status='OPEN'", fetch_all=True)
+    if not tickets:
+        return bot.send_message(ADMIN_ID, "✅ No open tickets.")
+    for t in tickets:
+        kb = InlineKeyboardMarkup().add(InlineKeyboardButton(f"Reply #{t[0]}", callback_data=f"rept_{t[0]}_{t[1]}"))
+        bot.send_message(ADMIN_ID, f"🎟️ *TICKET #{t[0]}* (`{t[1]}`)\n{t[2]}", parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("rept_"))
+def admin_reply_prompt(c):
+    if c.from_user.id != ADMIN_ID: return
+    _, tid, uid = c.data.split("_")
+    user_states[ADMIN_ID] = {"state": "treply", "tid": tid, "uid": uid}
+    bot.send_message(ADMIN_ID, f"✍️ *Reply to Ticket #{tid}:*", parse_mode="Markdown", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "treply")
+def admin_reply_send(m):
+    state = user_states[ADMIN_ID]
+    tid, uid = state["tid"], state["uid"]
+    reply_text = m.text
+    execute_db("UPDATE tickets SET status='CLOSED', reply=?, replied_at=CURRENT_TIMESTAMP WHERE ticket_id=?", (reply_text, tid))
+    try:
+        bot.send_message(uid, f"📩 *Support Reply (Ticket #{tid})*\n\n{reply_text}", parse_mode="Markdown")
+    except: pass
+    bot.send_message(ADMIN_ID, f"✅ Reply sent to user {uid}.", reply_markup=main_kb(ADMIN_ID))
+    user_states.pop(ADMIN_ID, None)
 
 # =======================================================================================
-# 12. FEATURE: LIVE ACTIVITY FEED (16)
+# 13. LIVE ACTIVITY & SUCCESS SHOWCASE
 # =======================================================================================
 def get_live_activity():
-    # Aggregate recent orders, users online (approximation)
     recent_orders = execute_db("SELECT COUNT(*) FROM orders WHERE placed_time > datetime('now','-1 hour')", fetch=True)[0]
     users_today = execute_db("SELECT COUNT(DISTINCT user_id) FROM orders WHERE placed_time > datetime('now','-1 day')", fetch=True)[0]
     trending_cat = execute_db("""
@@ -518,7 +578,6 @@ def get_live_activity():
         f"👥 Active users today: {users_today}"
     ]
     if trending_cat: msgs.append(f"📈 Trending: {trending_cat[0]} ({trending_cat[1]} orders)")
-    # Random success showcase message
     success = execute_db("SELECT api_order_id, service_id FROM orders WHERE status='Completed' ORDER BY RANDOM() LIMIT 1", fetch=True)
     if success:
         svc_name = execute_db("SELECT name FROM managed_services WHERE service_id=?", (success[1],), fetch=True)
@@ -529,29 +588,23 @@ def get_live_activity():
 def h_activity(m):
     bot.send_message(m.chat.id, get_live_activity(), parse_mode="Markdown")
 
-# =======================================================================================
-# 13. FEATURE: SUCCESS SHOWCASE (8)
-# =======================================================================================
 def update_success_feed():
     while True:
-        # Keep last 50 messages in activity_feed
         recent = execute_db("SELECT service_id, quantity FROM orders WHERE status='Completed' ORDER BY RANDOM() LIMIT 1", fetch=True)
         if recent:
             svc = execute_db("SELECT name FROM managed_services WHERE service_id=?", (recent[0],), fetch=True)
             if svc:
                 msg = f"🎉 {svc[0]} order ({recent[1]}x) completed!"
                 execute_db("INSERT INTO activity_feed (message) VALUES (?)", (msg,))
-                # Limit feed
                 execute_db("DELETE FROM activity_feed WHERE id NOT IN (SELECT id FROM activity_feed ORDER BY id DESC LIMIT 50)")
-        time.sleep(random.randint(1800, 3600))  # every 30-60 min
+        time.sleep(random.randint(1800, 3600))
 
 # =======================================================================================
-# 14. FEATURE: SMART PRICING ENGINE (10)
+# 14. SMART PRICING & FLASH SALES (WORKING)
 # =======================================================================================
 def dynamic_pricing_worker():
     while True:
-        # Adjust margins based on demand (simplified: if orders > 50 in 3 days, raise margin 5%)
-        services = execute_db("SELECT service_id, margin, orders_count FROM managed_services WHERE disabled=0", fetch_all=True)
+        services = execute_db("SELECT service_id, margin FROM managed_services WHERE disabled=0", fetch_all=True)
         for s in services:
             recent_orders = execute_db("SELECT COUNT(*) FROM orders WHERE service_id=? AND placed_time > datetime('now','-3 days')", (s[0],), fetch=True)[0]
             if recent_orders > 30:
@@ -560,7 +613,6 @@ def dynamic_pricing_worker():
             elif recent_orders < 5:
                 new_margin = max(s[1] - 0.03, 1.2)
                 execute_db("UPDATE managed_services SET margin=? WHERE service_id=?", (new_margin, s[0]))
-        # Flash sale random toggle (admin can manually override)
         time.sleep(3600)
 
 @bot.message_handler(func=lambda m: m.text == "🧪 Flash Sale Toggle" and m.from_user.id == ADMIN_ID)
@@ -575,16 +627,15 @@ def smart_pricing_info(m):
     bot.send_message(ADMIN_ID, "Smart pricing auto-adjusts margins based on demand. Use /setflash [multiplier] to set flash sale discount (e.g., 0.8 for 20% off).")
 
 # =======================================================================================
-# 15. FEATURE: USER SEGMENTATION (11)
+# 15. USER SEGMENTATION
 # =======================================================================================
 def update_user_segments():
-    users = execute_db("SELECT user_id, total_spent, verified FROM users WHERE is_banned=0", fetch_all=True)
+    users = execute_db("SELECT user_id, total_spent FROM users WHERE is_banned=0", fetch_all=True)
     for u in users:
         if u[1] >= 20000: seg = 'diamond'
         elif u[1] >= 5000: seg = 'vip'
         elif u[1] >= 1000: seg = 'active'
         else: seg = 'new'
-        # Check dormant
         last_order = execute_db("SELECT MAX(placed_time) FROM orders WHERE user_id=?", (u[0],), fetch=True)[0]
         if last_order:
             last = datetime.strptime(last_order, "%Y-%m-%d %H:%M:%S")
@@ -641,24 +692,22 @@ def h_escrow(c):
         amt = float(p[4])
         execute_db("UPDATE users SET balance=balance+? WHERE user_id=?", (amt, uid))
         execute_db("UPDATE transactions SET status='APPROVED' WHERE tx_id=?", (tx,))
-        # Referral bonus: find referrer
         referrer = execute_db("SELECT referrer_id FROM users WHERE user_id=?", (uid,), fetch=True)
         if referrer and referrer[0]:
             bonus = amt * 0.05
             execute_db("UPDATE referrals SET total_earned = total_earned + ? WHERE referrer_id=? AND referred_id=?", (bonus, referrer[0], uid))
             execute_db("UPDATE users SET balance=balance+? WHERE user_id=?", (bonus, referrer[0]))
-            send_notification(referrer[0], f"🎉 Referral bonus! {uid} deposited ₹{amt}, you earned ₹{bonus:.2f}", 'order')
+            send_notification(referrer[0], f"🎉 Referral bonus! Your referral deposited ₹{amt}, you earned ₹{bonus:.2f}", 'order')
         bot.edit_message_caption(f"✅ APPROVED TXN-{tx} | Added ₹{amt}", c.message.chat.id, c.message.message_id)
         try: bot.send_message(uid, f"🎉 *APPROVED!* `₹{amt}` added to your wallet.", parse_mode="Markdown")
         except: pass
-        # Update user segment
         update_user_segments()
     else:
         execute_db("UPDATE transactions SET status='REJECTED' WHERE tx_id=?", (tx,))
         bot.edit_message_caption(f"❌ REJECTED TXN-{tx}", c.message.chat.id, c.message.message_id)
 
 # =======================================================================================
-# 17. AUTO-ORDER STATUS MONITOR (1)
+# 17. AUTO-ORDER STATUS MONITOR
 # =======================================================================================
 def order_status_monitor():
     while True:
@@ -669,14 +718,11 @@ def order_status_monitor():
             new_status = res['status'].capitalize()
             if new_status != 'Pending':
                 execute_db("UPDATE orders SET status=?, completed_time=CURRENT_TIMESTAMP WHERE db_id=?", (new_status, o[0]))
-                # Update delivery stats
                 if new_status == 'Completed':
                     execute_db("INSERT INTO delivery_stats (service_id, delivery_seconds, order_date) SELECT service_id, (julianday(CURRENT_TIMESTAMP) - julianday(placed_time))*86400, date(placed_time) FROM orders WHERE db_id=?", (o[0],))
-                    # Update avg delivery time
                     avg = execute_db("SELECT AVG(delivery_seconds) FROM delivery_stats WHERE service_id=?", (o[2],), fetch=True)[0]
                     execute_db("UPDATE managed_services SET avg_delivery_minutes=? WHERE service_id=?", (int(avg/60) if avg else 120, o[2]))
                 send_notification(o[2], f"📊 Order #{o[1]} status: *{new_status}*", 'order')
-                # Auto-refund on cancel
                 if new_status == 'Canceled':
                     cost = execute_db("SELECT cost FROM orders WHERE db_id=?", (o[0],), fetch=True)
                     if cost:
@@ -685,7 +731,148 @@ def order_status_monitor():
         time.sleep(120)
 
 # =======================================================================================
-# 18. TIP OF THE DAY & KNOWLEDGE BASE
+# 18. SMART NOTIFICATIONS
+# =======================================================================================
+def can_notify(uid, notif_type):
+    settings = execute_db("SELECT * FROM user_notify_settings WHERE user_id=?", (uid,), fetch=True)
+    if not settings: return True
+    col = {'order': 1, 'promo': 2, 'tip': 3}
+    if notif_type in col and settings[col[notif_type]] == 0: return False
+    if settings[4] and settings[5]:
+        now = datetime.now().time()
+        quiet_start = datetime.strptime(settings[4], "%H:%M").time()
+        quiet_end = datetime.strptime(settings[5], "%H:%M").time()
+        if quiet_start <= now <= quiet_end: return False
+    return True
+
+def send_notification(uid, msg, notif_type='order'):
+    if can_notify(uid, notif_type):
+        try: bot.send_message(uid, msg, parse_mode="Markdown")
+        except: pass
+
+@bot.message_handler(commands=['notify'])
+def notify_settings(m):
+    uid = m.from_user.id
+    settings = execute_db("SELECT * FROM user_notify_settings WHERE user_id=?", (uid,), fetch=True)
+    if not settings: execute_db("INSERT INTO user_notify_settings (user_id) VALUES (?)", (uid,))
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton("Order Updates: ON" if (not settings or settings[1]) else "Order Updates: OFF", callback_data="tog_order"))
+    kb.add(InlineKeyboardButton("Promotions: ON" if (settings and settings[2]) else "Promotions: OFF", callback_data="tog_promo"))
+    kb.add(InlineKeyboardButton("Tips: ON" if (settings and settings[3]) else "Tips: OFF", callback_data="tog_tip"))
+    kb.add(InlineKeyboardButton("Quiet Hours: Set", callback_data="quiet_set"))
+    bot.send_message(m.chat.id, "🔔 *Notification Settings*", parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("tog_"))
+def toggle_notify(c):
+    uid = c.from_user.id
+    field = c.data.split("_")[1]
+    col = {'order':1, 'promo':2, 'tip':3}[field]
+    execute_db(f"UPDATE user_notify_settings SET {field}_updates = 1 - {field}_updates WHERE user_id=?", (uid,))
+    bot.answer_callback_query(c.id, "Toggled!")
+
+# =======================================================================================
+# 19. ADMIN COMMANDS (PROMO, BROADCAST, API LEDGER, MANAGE SERVICES)
+# =======================================================================================
+@bot.message_handler(func=lambda m: m.text == "🎟️ Create Promo" and m.from_user.id == ADMIN_ID)
+def admin_create_promo(m):
+    user_states[ADMIN_ID] = {"state": "c_promo"}
+    bot.send_message(ADMIN_ID, "🎟️ Format: `[CODE] [AMOUNT] [MAX_USERS]`\nExample: `FREE50 50 10`", parse_mode="Markdown", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "c_promo")
+def admin_promo_input(m):
+    try:
+        p = m.text.split()
+        execute_db("INSERT INTO promos (code, amount, max_uses) VALUES (?,?,?)", (p[0].upper(), float(p[1]), int(p[2])))
+        bot.send_message(ADMIN_ID, f"✅ Promo `{p[0].upper()}` Created!", parse_mode="Markdown", reply_markup=main_kb(ADMIN_ID))
+    except: bot.send_message(ADMIN_ID, "❌ Format Error.", reply_markup=main_kb(ADMIN_ID))
+    user_states.pop(ADMIN_ID, None)
+
+@bot.message_handler(func=lambda m: m.text == "📢 Broadcast" and m.from_user.id == ADMIN_ID)
+def admin_broadcast_prompt(m):
+    user_states[ADMIN_ID] = {"state": "broad"}
+    bot.send_message(ADMIN_ID, "📢 *Type message to send to all users:*", parse_mode="Markdown", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "broad")
+def admin_broadcast_send(m):
+    users = execute_db("SELECT user_id FROM users WHERE is_banned=0", fetch_all=True)
+    bot.send_message(ADMIN_ID, f"⏳ Sending to {len(users)} users...", reply_markup=main_kb(ADMIN_ID))
+    for u in users:
+        try: bot.send_message(u[0], f"📢 *ANNOUNCEMENT*\n\n{m.text}", parse_mode="Markdown")
+        except: pass
+    bot.send_message(ADMIN_ID, "✅ Broadcast completed.")
+    user_states.pop(ADMIN_ID, None)
+
+@bot.message_handler(func=lambda m: m.text == "🏦 API Ledger" and m.from_user.id == ADMIN_ID)
+def admin_ledger(m):
+    res = call_api('balance')
+    bal = res.get('balance', 'Error') if res else 'Error'
+    bot.send_message(ADMIN_ID, f"🏦 *API PROVIDER BALANCE:* `₹{bal}`", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.text == "⚙️ Manage Services" and m.from_user.id == ADMIN_ID)
+def admin_manage_svc(m):
+    user_states[ADMIN_ID] = {"state": "svc_cat"}
+    bot.send_message(ADMIN_ID, "📁 Category Name (e.g. Instagram):", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "svc_cat")
+def admin_svc_cat(m):
+    user_states[ADMIN_ID].update({"state": "svc_ids", "cat": m.text.strip()})
+    bot.send_message(ADMIN_ID, "🔢 Send Provider Service IDs (Space separated for bulk add):")
+
+@bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "svc_ids")
+def admin_svc_ids(m):
+    ids = m.text.replace(',', ' ').split()
+    api_svcs = call_api('services')
+    count = 0
+    margin = get_margin()
+    for sid in ids:
+        try:
+            s = next(i for i in api_svcs if str(i['service']) == sid.strip())
+            execute_db("INSERT OR REPLACE INTO managed_services (service_id, category, name, rate, margin) VALUES (?,?,?,?,?)",
+                       (int(sid), user_states[ADMIN_ID]["cat"], s['name'], float(s['rate']), margin))
+            count += 1
+        except: pass
+    bot.send_message(ADMIN_ID, f"✅ Successfully added {count} services to {user_states[ADMIN_ID]['cat']}.", reply_markup=main_kb(ADMIN_ID))
+    user_states.pop(ADMIN_ID, None)
+
+@bot.message_handler(func=lambda m: m.text == "📈 Adjust Margins" and m.from_user.id == ADMIN_ID)
+def admin_margin_prompt(m):
+    user_states[ADMIN_ID] = {"state": "margin"}
+    bot.send_message(ADMIN_ID, "📈 Enter new margin % (e.g. 50):", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and user_states.get(ADMIN_ID, {}).get("state") == "margin")
+def admin_margin_set(m):
+    try:
+        val = 1 + (float(m.text) / 100)
+        execute_db("UPDATE settings SET value=? WHERE key='global_margin'", (str(val),))
+        execute_db("UPDATE managed_services SET margin=?", (val,))
+        bot.send_message(ADMIN_ID, f"✅ Margin updated to {m.text}%.", reply_markup=main_kb(ADMIN_ID))
+    except: bot.send_message(ADMIN_ID, "Error.")
+    user_states.pop(ADMIN_ID, None)
+
+# =======================================================================================
+# 20. PROMO REDEEM (WORKING)
+# =======================================================================================
+@bot.message_handler(func=lambda m: m.text == "🎟️ Redeem Promo")
+def h_promo(m):
+    user_states[m.from_user.id] = {"state": "promo"}
+    bot.send_message(m.chat.id, "🎟️ *Enter Promo Code:*", parse_mode="Markdown", reply_markup=cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "promo")
+def h_promo_run(m):
+    uid, code = m.from_user.id, m.text.strip().upper()
+    if execute_db("SELECT * FROM promo_redeems WHERE user_id=? AND code=?", (uid, code), fetch=True):
+        return bot.send_message(m.chat.id, "❌ You already used this code.", reply_markup=main_kb(uid))
+    p = execute_db("SELECT amount, max_uses, current_uses FROM promos WHERE code=?", (code,), fetch=True)
+    if p and p[2] < p[1]:
+        execute_db("UPDATE promos SET current_uses=current_uses+1 WHERE code=?", (code,))
+        execute_db("INSERT INTO promo_redeems (user_id, code) VALUES (?, ?)", (uid, code))
+        execute_db("UPDATE users SET balance=balance+? WHERE user_id=?", (p[0], uid))
+        bot.send_message(m.chat.id, f"🎉 *SUCCESS!* `₹{p[0]}` added!", parse_mode="Markdown", reply_markup=main_kb(uid))
+    else: bot.send_message(m.chat.id, "❌ Invalid or Expired code.", reply_markup=main_kb(uid))
+    user_states.pop(uid, None)
+
+# =======================================================================================
+# 21. TIP OF THE DAY
 # =======================================================================================
 def get_tip_of_the_day():
     tips = [
@@ -703,7 +890,7 @@ def get_tip_of_the_day():
     return random.choice(tips)
 
 # =======================================================================================
-# 19. STARTUP & THREADS
+# 22. STARTUP & THREADS
 # =======================================================================================
 if __name__ == '__main__':
     init_database()
@@ -712,14 +899,12 @@ if __name__ == '__main__':
         time.sleep(1)
     except: pass
 
-    # Start background threads
     threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True, timeout=60), daemon=True).start()
     threading.Thread(target=order_status_monitor, daemon=True).start()
     threading.Thread(target=dynamic_pricing_worker, daemon=True).start()
     threading.Thread(target=dormant_reactivation, daemon=True).start()
     threading.Thread(target=update_success_feed, daemon=True).start()
 
-    # Self-ping
     def self_ping():
         while True:
             try:
