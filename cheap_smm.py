@@ -1,7 +1,7 @@
 """
 =========================================================================================
-🔥 SMM PANEL BOT - ENTERPRISE V16 ULTIMATE 🔥
-(ALL FEATURES: Categories, Manual User Manager, Backup/Restore, Add Funds, Free Views)
+🔥 SMM PANEL BOT - ENTERPRISE V17 ULTIMATE 🔥
+(NEW: AI Support Chatbot, Admin Analytics Dashboard, Live Auto-DMs for Order Updates)
 =========================================================================================
 """
 
@@ -15,13 +15,16 @@ from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeybo
 # =======================================================================================
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAGtHZil3ct61TdWrLx9FRoAEnbrxWsfU_o')
+# ⚠️ REPLACE THESE WITH YOUR KEYS!
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAGbp8FiWPTx-2IPd0LxVDNRU8tjgwrwKN0')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.Ab8RN6K9E8LLYov90BvynM1mZEJ_GYh_7N-LTcu6eefJW2m4YA')
+
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
 PROVIDERS = {
     "provider_primary": {
         "url": os.environ.get("API_URL_1", "https://iggrowbot.com/api/v2"),
-        "key": os.environ.get("API_KEY_1", "9121db38ab4c9e449365fa1ecfefb7ab")
+        "key": os.environ.get("API_KEY_1", "797c2fb97d3fce189d397ef7639cc29f")
     }
 }
 
@@ -38,7 +41,7 @@ db_lock = threading.Lock()
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "🔥 SMM V16 ENTERPRISE ONLINE 🔥"
+def home(): return "🔥 SMM V17 ENTERPRISE ONLINE (WITH AI & ANALYTICS) 🔥"
 
 # =======================================================================================
 # 2. DATABASE ENGINE
@@ -46,7 +49,7 @@ def home(): return "🔥 SMM V16 ENTERPRISE ONLINE 🔥"
 def execute_db(query, params=(), fetch=False, fetch_all=False, return_id=False):
     with db_lock:
         try:
-            with sqlite3.connect('panel_v16.db', check_same_thread=False, timeout=20) as conn:
+            with sqlite3.connect('panel_v17.db', check_same_thread=False, timeout=20) as conn:
                 c = conn.cursor()
                 c.execute(query, params)
                 if fetch: return c.fetchone()
@@ -69,7 +72,7 @@ def init_database():
         )""",
         """CREATE TABLE IF NOT EXISTS orders (
             db_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, provider TEXT, api_order_id TEXT,
-            service_id INTEGER, quantity INTEGER, cost REAL, status TEXT DEFAULT 'pending',
+            service_id INTEGER, quantity INTEGER, cost REAL, profit REAL DEFAULT 0.0, status TEXT DEFAULT 'pending',
             auto_refill INTEGER DEFAULT 1, last_refill_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP, placed_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""",
         """CREATE TABLE IF NOT EXISTS managed_services (
@@ -85,13 +88,17 @@ def init_database():
     for table in tables: execute_db(table)
     if not execute_db("SELECT value FROM settings WHERE key='global_margin'", fetch=True):
         execute_db("INSERT INTO settings (key, value) VALUES ('global_margin', '1.50')")
+    
+    # Safely retrofit 'profit' column if upgrading from an older DB version
+    try: execute_db("ALTER TABLE orders ADD COLUMN profit REAL DEFAULT 0.0")
+    except: pass
 
 def is_banned(uid):
     u = execute_db("SELECT is_banned FROM users WHERE user_id=?", (uid,), fetch=True)
     return u and u[0] == 1
 
 # =======================================================================================
-# 3. UTILITIES
+# 3. UTILITIES & AI ENGINE
 # =======================================================================================
 def call_provider_api(provider_name, action, extra=None):
     prov = PROVIDERS.get(provider_name, PROVIDERS["provider_primary"])
@@ -112,6 +119,25 @@ def detect_platform(category_str, name_str):
     elif any(k in c for k in ['twitter', 'x ', 'tweet']): return "🐦 Twitter / X"
     return "⚡ General Boost"
 
+def ask_gemini_support(user_message):
+    if not GEMINI_API_KEY or GEMINI_API_KEY == 'YOUR_GEMINI_API_KEY_HERE': return None
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    prompt = (
+        "You are the AI Support Agent for 'Cheap SMM Panel'. Keep answers extremely brief, polite, and helpful. "
+        "Rules: 1. Min deposit is ₹15 via UPI. 2. Users must upload a screenshot after paying to add funds. "
+        "3. Orders take 1-24 hours depending on the service. "
+        "If a user complains about a failed payment, refund, complex error, or requests human help, "
+        "you MUST include the exact word [ESCALATE] in your response so our system forwards it to the human admin."
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": prompt}]},
+        "contents": [{"parts": [{"text": user_message}]}]
+    }
+    try:
+        r = requests.post(url, json=payload, timeout=10)
+        return r.json()['candidates'][0]['content']['parts'][0]['text']
+    except: return None
+
 # =======================================================================================
 # 4. KEYBOARDS
 # =======================================================================================
@@ -124,8 +150,8 @@ def main_kb(uid):
     if uid == ADMIN_ID:
         kb.add("🧠 Admin: Smart Sync", "👥 Admin: Manage Users")
         kb.add("📈 Admin: Margin", "📢 Admin: Broadcast")
+        kb.add("📊 Admin: Stats", "🎫 Admin: Tickets")
         kb.add("💾 Admin: Backup DB", "🔄 Admin: Restore DB")
-        kb.add("🎫 Admin: Tickets")
     return kb
 
 def back_cancel_kb():
@@ -221,34 +247,70 @@ def h_process_free_claim(m):
     api_res, prov_used = call_provider_api(FREE_VIEWS_PROVIDER, 'add', {'service': FREE_VIEWS_SERVICE_ID, 'link': m.text.strip(), 'quantity': 1000})
     if api_res and 'order' in api_res:
         execute_db("UPDATE users SET free_views_credits = free_views_credits - 1 WHERE user_id=?", (uid,))
-        execute_db("INSERT INTO orders (user_id, provider, api_order_id, service_id, quantity, cost, auto_refill) VALUES (?,?,?,?,?,?,0)", (uid, prov_used, api_res['order'], FREE_VIEWS_SERVICE_ID, 1000, 0.0))
+        execute_db("INSERT INTO orders (user_id, provider, api_order_id, service_id, quantity, cost, profit, auto_refill) VALUES (?,?,?,?,?,?,?,0)", 
+                   (uid, prov_used, api_res['order'], FREE_VIEWS_SERVICE_ID, 1000, 0.0, 0.0))
         bot.send_message(m.chat.id, f"✅ <b>SUCCESS! 1,000 FREE VIEWS ORDERED!</b>\n🧾 <b>ID:</b> <code>{api_res['order']}</code>", parse_mode="HTML", reply_markup=main_kb(uid))
     else: bot.send_message(m.chat.id, "❌ <b>Failed! Check your link.</b>", parse_mode="HTML", reply_markup=main_kb(uid))
     user_states.pop(uid, None)
 
+# =======================================================================================
+# 6. AI SUPPORT & TICKETS
+# =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "📞 Support 🎫")
 def h_support(m):
     kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton("💬 Direct Chat", url=f"https://t.me/{SUPPORT_USERNAME.replace('@','')}"), InlineKeyboardButton("🎫 Open Ticket", callback_data="make_ticket"))
+    kb.add(InlineKeyboardButton("💬 Direct Chat", url=f"https://t.me/{SUPPORT_USERNAME.replace('@','')}"), InlineKeyboardButton("🎫 Open Ticket (AI Support)", callback_data="make_ticket"))
     bot.send_message(m.chat.id, "📞 <b>SUPPORT DESK</b>", parse_mode="HTML", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data == "make_ticket")
 def h_ticket_init(c):
     bot.answer_callback_query(c.id)
     user_states[c.from_user.id] = {"state": "waiting_ticket_text"}
-    bot.send_message(c.message.chat.id, "📝 <b>Type your message/issue below:</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
+    bot.send_message(c.message.chat.id, "📝 <b>Type your message/issue below:</b>\n<i>Our AI assistant will try to help you instantly!</i>", parse_mode="HTML", reply_markup=back_cancel_kb())
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "waiting_ticket_text")
 def h_ticket_save(m):
     uid = m.from_user.id
-    tid = execute_db("INSERT INTO tickets (user_id, message) VALUES (?,?)", (uid, m.text), return_id=True)
+    bot.send_message(m.chat.id, "⏳ <i>AI Support is typing...</i>", parse_mode="HTML")
+    
+    ai_reply = ask_gemini_support(m.text)
+    
+    if ai_reply:
+        if "[ESCALATE]" in ai_reply:
+            clean_reply = ai_reply.replace("[ESCALATE]", "").strip()
+            if clean_reply: bot.send_message(m.chat.id, f"🤖 <b>AI:</b> {clean_reply}", parse_mode="HTML")
+            
+            tid = execute_db("INSERT INTO tickets (user_id, message) VALUES (?,?)", (uid, m.text), return_id=True)
+            bot.send_message(m.chat.id, f"✅ <b>Ticket #{tid} created!</b> A human admin will review this shortly.", parse_mode="HTML", reply_markup=main_kb(uid))
+            try: bot.send_message(ADMIN_ID, f"🚨 <b>ESCALATED TICKET #{tid}</b>\nFrom: <code>{uid}</code>\n💬 {m.text}", parse_mode="HTML")
+            except: pass
+            user_states.pop(uid, None)
+        else:
+            bot.send_message(m.chat.id, f"🤖 <b>AI Support:</b> {ai_reply}\n\n<i>Did this solve your issue? If not, simply type 'human' to open a ticket for the admin.</i>", parse_mode="HTML")
+            user_states[uid] = {"state": "wait_human_ticket", "last_msg": m.text}
+    else:
+        # Fallback if API fails
+        tid = execute_db("INSERT INTO tickets (user_id, message) VALUES (?,?)", (uid, m.text), return_id=True)
+        bot.send_message(m.chat.id, f"✅ <b>Ticket #{tid} submitted!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
+        try: bot.send_message(ADMIN_ID, f"🚨 <b>NEW TICKET #{tid}</b>\nFrom: <code>{uid}</code>\n💬 {m.text}", parse_mode="HTML")
+        except: pass
+        user_states.pop(uid, None)
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "wait_human_ticket")
+def h_escalate_ticket(m):
+    uid = m.from_user.id
+    if m.text.lower() == 'human':
+        last_msg = user_states[uid].get("last_msg", "User requested human help.")
+        tid = execute_db("INSERT INTO tickets (user_id, message) VALUES (?,?)", (uid, last_msg), return_id=True)
+        bot.send_message(m.chat.id, f"✅ <b>Ticket #{tid} submitted to admin!</b> They will reply soon.", parse_mode="HTML", reply_markup=main_kb(uid))
+        try: bot.send_message(ADMIN_ID, f"🚨 <b>HUMAN TICKET #{tid}</b>\nFrom: <code>{uid}</code>\n💬 {last_msg}", parse_mode="HTML")
+        except: pass
+    else:
+        bot.send_message(m.chat.id, "🏠 <b>Returned to Main Menu.</b>", parse_mode="HTML", reply_markup=main_kb(uid))
     user_states.pop(uid, None)
-    bot.send_message(m.chat.id, f"✅ <b>Ticket #{tid} submitted!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
-    try: bot.send_message(ADMIN_ID, f"🚨 <b>NEW TICKET #{tid}</b>\nFrom: <code>{uid}</code>\n💬 {m.text}", parse_mode="HTML")
-    except: pass
 
 # =======================================================================================
-# 6. ADD FUNDS FLOW
+# 7. ADD FUNDS FLOW
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "💳 Add Funds 💸")
 def h_add_funds(m):
@@ -298,8 +360,30 @@ def h_admin_approval(c):
         except: pass
 
 # =======================================================================================
-# 7. ADMIN CONTROLS (USERS, SYNC, MARGIN, BROADCAST, BACKUP/RESTORE, TICKETS)
+# 8. ADMIN DASHBOARD & CONTROLS
 # =======================================================================================
+@bot.message_handler(func=lambda m: m.text == "📊 Admin: Stats" or m.text == "/stats")
+def h_admin_stats(m):
+    if m.from_user.id != ADMIN_ID: return
+    
+    profit_row = execute_db("SELECT SUM(profit) FROM orders WHERE date(placed_time) = date('now')", fetch=True)
+    profit_today = profit_row[0] if profit_row and profit_row[0] else 0.0
+    
+    active_users = execute_db("SELECT COUNT(*) FROM users WHERE is_banned=0", fetch=True)[0]
+    wallet_funds = execute_db("SELECT SUM(balance) FROM users", fetch=True)[0] or 0.0
+    orders_today = execute_db("SELECT COUNT(*) FROM orders WHERE date(placed_time) = date('now')", fetch=True)[0]
+    
+    msg = (
+        f"📊 <b>ADMIN ANALYTICS DASHBOARD</b> 📊\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"💵 <b>Total Profit Today:</b> <code>₹{profit_today:.2f}</code>\n"
+        f"👥 <b>Total Active Users:</b> <code>{active_users}</code>\n"
+        f"💰 <b>Funds Sitting in Wallets:</b> <code>₹{wallet_funds:.2f}</code>\n"
+        f"📦 <b>Orders Placed Today:</b> <code>{orders_today}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━"
+    )
+    bot.send_message(ADMIN_ID, msg, parse_mode="HTML")
+
 @bot.message_handler(func=lambda m: m.text == "👥 Admin: Manage Users" and m.from_user.id == ADMIN_ID)
 def h_admin_manage_users(m):
     user_states[ADMIN_ID] = {"state": "wait_manage_uid"}
@@ -352,7 +436,6 @@ def h_admin_bal_adjust(m):
     
     if action == "wait_adm_add":
         execute_db("UPDATE users SET balance=balance+? WHERE user_id=?", (amt, target_uid))
-        execute_db("INSERT INTO transactions (user_id, amount, status) VALUES (?, ?, 'ADMIN_ADD')", (target_uid, amt))
         bot.send_message(ADMIN_ID, f"✅ <b>Added ₹{amt:.2f}</b> to <code>{target_uid}</code>.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
         try: bot.send_message(target_uid, f"🎁 ₹{amt:.2f} added to your balance!", parse_mode="HTML")
         except: pass
@@ -360,10 +443,7 @@ def h_admin_bal_adjust(m):
         user = execute_db("SELECT balance FROM users WHERE user_id=?", (target_uid,), fetch=True)
         new_bal = max(0.0, user[0] - amt)
         execute_db("UPDATE users SET balance=? WHERE user_id=?", (new_bal, target_uid))
-        execute_db("INSERT INTO transactions (user_id, amount, status) VALUES (?, ?, 'ADMIN_DEDUCT')", (target_uid, -amt))
         bot.send_message(ADMIN_ID, f"✅ <b>Deducted ₹{amt:.2f}</b> from <code>{target_uid}</code>.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
-        try: bot.send_message(target_uid, f"⚠️ ₹{amt:.2f} deducted from your balance.", parse_mode="HTML")
-        except: pass
     user_states.pop(ADMIN_ID, None)
 
 @bot.message_handler(func=lambda m: m.text == "🧠 Admin: Smart Sync" and m.from_user.id == ADMIN_ID)
@@ -449,7 +529,7 @@ def handle_admin_backup(m):
     backup_file = f"backup_{int(time.time())}.db"
     try:
         with db_lock:
-            with sqlite3.connect('panel_v16.db') as src, sqlite3.connect(backup_file) as dst: src.backup(dst)
+            with sqlite3.connect('panel_v17.db') as src, sqlite3.connect(backup_file) as dst: src.backup(dst)
         with open(backup_file, 'rb') as doc:
             bot.send_document(uid, doc, caption="💾 <b>Database Backup</b> ✅", parse_mode="HTML")
     except Exception as e: bot.send_message(uid, f"❌ Backup Failed: <code>{e}</code>", parse_mode="HTML")
@@ -472,7 +552,7 @@ def handle_document_upload(m):
             downloaded = bot.download_file(bot.get_file(m.document.file_id).file_path)
             with open(temp_file, 'wb') as f: f.write(downloaded)
             with db_lock:
-                with sqlite3.connect(temp_file) as src, sqlite3.connect('panel_v16.db') as dst: src.backup(dst)
+                with sqlite3.connect(temp_file) as src, sqlite3.connect('panel_v17.db') as dst: src.backup(dst)
             bot.send_message(uid, "✅ <b>RESTORED SUCCESSFULLY!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
         except Exception as e: bot.send_message(uid, f"❌ Failed: {e}", reply_markup=main_kb(uid))
         finally:
@@ -480,7 +560,7 @@ def handle_document_upload(m):
             if os.path.exists(temp_file): os.remove(temp_file)
 
 # =======================================================================================
-# 8. PLATFORM BROWSING & BUYING
+# 9. PLATFORM BROWSING & BUYING
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "🛒 Browse Services 🚀")
 def h_browse(m):
@@ -571,6 +651,9 @@ def h_qty_input(m):
         return bot.send_message(m.chat.id, f"🚫 <b>Out of Range!</b> Min: <code>{svc[4]}</code> | Max: <code>{svc[5]}</code>", parse_mode="HTML", reply_markup=back_cancel_kb())
 
     cost = (qty / 1000.0) * (svc[2] * svc[3])
+    base_cost = (qty / 1000.0) * svc[2]
+    profit = cost - base_cost
+    
     u_bal = execute_db("SELECT balance FROM users WHERE user_id=?", (uid,), fetch=True)[0]
     
     if u_bal < cost: 
@@ -582,24 +665,40 @@ def h_qty_input(m):
     
     if api_res and 'order' in api_res:
         execute_db("UPDATE users SET balance=balance-?, total_spent=total_spent+? WHERE user_id=?", (cost, cost, uid))
-        execute_db("INSERT INTO orders (user_id, provider, api_order_id, service_id, quantity, cost, auto_refill) VALUES (?,?,?,?,?,?,1)",
-                   (uid, prov_used, api_res['order'], state["sid"], qty, cost))
+        execute_db("INSERT INTO orders (user_id, provider, api_order_id, service_id, quantity, cost, profit, auto_refill) VALUES (?,?,?,?,?,?,?,1)",
+                   (uid, prov_used, api_res['order'], state["sid"], qty, cost, profit))
         bot.send_message(m.chat.id, f"✅ <b>ORDER DISPATCHED!</b> 🎉\n🧾 <b>ID:</b> <code>{api_res['order']}</code>\n💰 <b>Cost:</b> ₹{cost:.2f}", parse_mode="HTML", reply_markup=main_kb(uid))
     else: bot.send_message(m.chat.id, "❌ <b>Provider Error!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
     user_states.pop(uid, None)
 
 # =======================================================================================
-# 9. BACKGROUND TASKS
+# 10. BACKGROUND TASKS & LIVE ORDER NOTIFICATIONS
 # =======================================================================================
 def auto_refill_and_status_monitor():
     while True:
         try:
-            orders = execute_db("SELECT db_id, provider, api_order_id FROM orders WHERE status IN ('pending', 'In progress', 'Processing')", fetch_all=True)
+            orders = execute_db("SELECT db_id, provider, api_order_id, status, user_id, quantity, service_id FROM orders WHERE status IN ('pending', 'In progress', 'Processing', 'Pending')", fetch_all=True)
             if orders:
                 for o in orders:
                     res, _ = call_provider_api(o[1], 'status', {'order': o[2]})
-                    if res and 'status' in res: execute_db("UPDATE orders SET status=? WHERE db_id=?", (res['status'].capitalize(), o[0]))
-        except: pass
+                    if res and 'status' in res:
+                        new_status = res['status'].capitalize()
+                        if new_status != o[3]:
+                            execute_db("UPDATE orders SET status=? WHERE db_id=?", (new_status, o[0]))
+                            
+                            # Live DM Notification for Users
+                            if new_status in ['Completed', 'Partial', 'Canceled']:
+                                svc = execute_db("SELECT name FROM managed_services WHERE service_id=?", (o[6],), fetch=True)
+                                svc_name = svc[0] if svc else "Service"
+                                emoji = "✅" if new_status == "Completed" else "⚠️"
+                                msg = (
+                                    f"{emoji} <b>Hey! Order Update!</b> 🎉\n\n"
+                                    f"Your order of <b>{o[5]:,} {html.escape(svc_name)}</b> is now <b>{new_status.upper()}</b>!"
+                                )
+                                try: bot.send_message(o[4], msg, parse_mode="HTML")
+                                except: pass
+        except Exception as e:
+            logging.error(f"Monitor error: {e}")
         time.sleep(300)
 
 if __name__ == '__main__':
