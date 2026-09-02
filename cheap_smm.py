@@ -15,13 +15,13 @@ from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeybo
 # =======================================================================================
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAGWsCeTG5MgMwpshno7elpXbkQXvToDz1Y')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFjaadReDCEiCcowygMQX-bdVpoPA3IREk')
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
 PROVIDERS = {
     "provider_primary": {
         "url": os.environ.get("API_URL_1", "https://iggrowbot.com/api/v2"),
-        "key": os.environ.get("API_KEY_1", "c1ff6a119106be59dab2829144bc413a")
+        "key": os.environ.get("API_KEY_1", "c71040b041afb45b2bd008bfde82fa08")
     }
 }
 
