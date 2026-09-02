@@ -1,7 +1,7 @@
 """
 =========================================================================================
 🔥 SMM PANEL BOT - ENTERPRISE V16 ULTIMATE 🔥
-(INTERACTIVE ADMIN DASHBOARD + ADD/DEDUCT BAL + BAN SYSTEM + PLATFORM CATEGORIES)
+(ALL FEATURES: Categories, Manual User Manager, Backup/Restore, Add Funds, Free Views)
 =========================================================================================
 """
 
@@ -11,17 +11,17 @@ from flask import Flask
 from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 
 # =======================================================================================
-# 1. CONFIGURATION & SERVER SETUP
+# 1. CONFIGURATION
 # =======================================================================================
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAESLgZbAzrdLqODmc7_dWIy6oMKc00LwVg')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAGtHZil3ct61TdWrLx9FRoAEnbrxWsfU_o')
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
 PROVIDERS = {
     "provider_primary": {
         "url": os.environ.get("API_URL_1", "https://iggrowbot.com/api/v2"),
-        "key": os.environ.get("API_KEY_1", "c71040b041afb45b2bd008bfde82fa08")
+        "key": os.environ.get("API_KEY_1", "9121db38ab4c9e449365fa1ecfefb7ab")
     }
 }
 
@@ -38,8 +38,7 @@ db_lock = threading.Lock()
 
 app = Flask(__name__)
 @app.route('/')
-def home(): 
-    return "🔥 SMM V16 ENTERPRISE ONLINE & ACTIVE 🔥"
+def home(): return "🔥 SMM V16 ENTERPRISE ONLINE 🔥"
 
 # =======================================================================================
 # 2. DATABASE ENGINE
@@ -58,7 +57,7 @@ def execute_db(query, params=(), fetch=False, fetch_all=False, return_id=False):
                 conn.commit()
                 return True
         except Exception as e:
-            logging.error(f"Database Error [{query}]: {e}")
+            logging.error(f"DB Error [{query}]: {e}")
             return False
 
 def init_database():
@@ -92,7 +91,7 @@ def is_banned(uid):
     return u and u[0] == 1
 
 # =======================================================================================
-# 3. API & UTILITIES
+# 3. UTILITIES
 # =======================================================================================
 def call_provider_api(provider_name, action, extra=None):
     prov = PROVIDERS.get(provider_name, PROVIDERS["provider_primary"])
@@ -101,18 +100,16 @@ def call_provider_api(provider_name, action, extra=None):
     try:
         res = requests.post(prov['url'], data=payload, timeout=15)
         return res.json(), provider_name
-    except Exception as e:
-        logging.error(f"API Call Failed: {e}")
-        return None, provider_name
+    except: return None, provider_name
 
 def detect_platform(category_str, name_str):
-    combined = f"{category_str} {name_str}".lower()
-    if any(k in combined for k in ['instagram', 'ig ', 'reels', 'insta']): return "📸 Instagram"
-    elif any(k in combined for k in ['telegram', 'tg ', 'tele ']): return "✈️ Telegram"
-    elif any(k in combined for k in ['youtube', 'yt ', 'shorts']): return "🔴 YouTube"
-    elif any(k in combined for k in ['facebook', 'fb ']): return "📘 Facebook"
-    elif any(k in combined for k in ['tiktok', 'tik tok']): return "🎵 TikTok"
-    elif any(k in combined for k in ['twitter', 'x ', 'tweet']): return "🐦 Twitter / X"
+    c = f"{category_str} {name_str}".lower()
+    if any(k in c for k in ['instagram', 'ig ', 'reels', 'insta']): return "📸 Instagram"
+    elif any(k in c for k in ['telegram', 'tg ', 'tele ']): return "✈️ Telegram"
+    elif any(k in c for k in ['youtube', 'yt ', 'shorts']): return "🔴 YouTube"
+    elif any(k in c for k in ['facebook', 'fb ']): return "📘 Facebook"
+    elif any(k in c for k in ['tiktok', 'tik tok']): return "🎵 TikTok"
+    elif any(k in c for k in ['twitter', 'x ', 'tweet']): return "🐦 Twitter / X"
     return "⚡ General Boost"
 
 # =======================================================================================
@@ -125,19 +122,17 @@ def main_kb(uid):
     kb.add("📦 Order History 📜", "🤝 Referral Program 👥")
     kb.add("📞 Support 🎫")
     if uid == ADMIN_ID:
-        kb.add("🧠 Admin: Smart Sync", "📈 Admin: Margin")
-        kb.add("👥 Admin: Manage Users", "🎫 Admin: Tickets")
-        kb.add("📢 Admin: Broadcast", "💾 Admin: Backup DB")
-        kb.add("🔄 Admin: Restore DB")
+        kb.add("🧠 Admin: Smart Sync", "👥 Admin: Manage Users")
+        kb.add("📈 Admin: Margin", "📢 Admin: Broadcast")
+        kb.add("💾 Admin: Backup DB", "🔄 Admin: Restore DB")
+        kb.add("🎫 Admin: Tickets")
     return kb
 
 def back_cancel_kb():
-    kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    kb.add("🔙 Step Back", "❌ Cancel to Menu")
-    return kb
+    return ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add("🔙 Step Back", "❌ Cancel to Menu")
 
 # =======================================================================================
-# 5. USER FLOW (START & NAVIGATION)
+# 5. USER FLOW
 # =======================================================================================
 @bot.message_handler(commands=['start'])
 def h_start(m):
@@ -149,8 +144,7 @@ def h_start(m):
         args = m.text.split()
         if len(args) > 1 and args[1].startswith('ref_'):
             try:
-                potential = int(args[1].replace('ref_', ''))
-                if potential != uid: referrer_id = potential
+                if int(args[1].replace('ref_', '')) != uid: referrer_id = int(args[1].replace('ref_', ''))
             except: pass
         execute_db("INSERT INTO users (user_id, username, first_name, referrer_id, referral_code) VALUES (?,?,?,?,?)",
                    (uid, m.from_user.username, m.from_user.first_name, referrer_id, f"REF{uid}"))
@@ -160,80 +154,168 @@ def h_start(m):
             try: bot.send_message(referrer_id, "🎊 <b>A friend joined!</b>\n🎁 <b>You received +1 Free 1K Views Credit!</b>", parse_mode="HTML")
             except: pass
 
-    if is_banned(uid):
-        return bot.send_message(m.chat.id, "🚫 <b>YOUR ACCOUNT HAS BEEN BANNED.</b>\nContact support if you think this is a mistake.", parse_mode="HTML")
+    if is_banned(uid): return bot.send_message(m.chat.id, "🚫 <b>YOUR ACCOUNT HAS BEEN BANNED.</b>", parse_mode="HTML")
 
-    safe_name = html.escape(m.from_user.first_name or "User")
-    msg = (
-        f"👋 <b>Welcome to Cheap SMM Panel, {safe_name}!</b> 🚀🔥\n\n"
-        f"Boost your social media growth instantly across all major platforms with lightning fast speeds! 📈⚡️\n\n"
-        f"👇 <b>HOW TO GET STARTED:</b>\n"
-        f"1️⃣ <b>Add Balance:</b> Tap <b>'💳 Add Funds'</b> to load your wallet.\n"
-        f"2️⃣ <b>Browse Services:</b> Tap <b>'🛒 Browse Services'</b> to choose your platform.\n"
-        f"3️⃣ <b>Place Order:</b> Paste your link and grow!\n\n"
-        f"<i>Select any button below to start:</i> 👇✨"
-    )
+    msg = f"👋 <b>Welcome to Cheap SMM Panel, {html.escape(m.from_user.first_name or 'User')}!</b> 🚀\n\n👇 <b>HOW TO GET STARTED:</b>\n1️⃣ Tap <b>'💳 Add Funds'</b>\n2️⃣ Tap <b>'🛒 Browse Services'</b>\n3️⃣ Paste your link and grow!"
     bot.send_message(m.chat.id, msg, parse_mode="HTML", reply_markup=main_kb(uid))
 
 @bot.message_handler(func=lambda m: m.text == "❌ Cancel to Menu")
 def h_cancel(m):
     user_states.pop(m.from_user.id, None)
-    bot.send_message(m.chat.id, "🚫 <b>Action Cancelled!</b>\n🏠 <i>You are back at the main menu.</i>", parse_mode="HTML", reply_markup=main_kb(m.from_user.id))
+    bot.send_message(m.chat.id, "🚫 <b>Cancelled!</b>\n🏠 <i>Back at the main menu.</i>", parse_mode="HTML", reply_markup=main_kb(m.from_user.id))
 
 @bot.message_handler(func=lambda m: m.text == "🔙 Step Back")
 def h_step_back(m):
     uid = m.from_user.id
-    state_data = user_states.get(uid, {})
-    current_state = state_data.get("state")
+    current_state = user_states.get(uid, {}).get("state")
 
     if current_state == "get_qty":
         user_states[uid]["state"] = "get_link"
-        bot.send_message(m.chat.id, "🔙 <b>Went 1 step back!</b>\n🔗 <b>STEP 1: Send the Target Link</b> 📌", parse_mode="HTML", reply_markup=back_cancel_kb())
+        bot.send_message(m.chat.id, "🔙 <b>Went 1 step back!</b>\n🔗 <b>STEP 1: Send the Target Link</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
     elif current_state == "get_link":
         user_states.pop(uid, None)
         h_browse(m)
     elif current_state == "fund_ss":
         user_states[uid]["state"] = "fund_amt"
         bot.send_message(m.chat.id, f"🔙 <b>Went 1 step back!</b>\n💸 <b>Enter deposit amount (₹):</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
-    elif current_state in ["fund_amt", "wait_manage_uid", "wait_adm_add", "wait_adm_sub"]:
-        user_states.pop(uid, None)
-        bot.send_message(m.chat.id, "🏠 <b>Returned to Main Menu:</b>", parse_mode="HTML", reply_markup=main_kb(uid))
     else:
         user_states.pop(uid, None)
-        bot.send_message(m.chat.id, "🏠 <b>Main Menu:</b>", parse_mode="HTML", reply_markup=main_kb(uid))
+        bot.send_message(m.chat.id, "🏠 <b>Returned to Main Menu.</b>", parse_mode="HTML", reply_markup=main_kb(uid))
+
+@bot.message_handler(func=lambda m: m.text == "💰 My Profile 👤")
+def h_profile(m):
+    u = execute_db("SELECT balance, total_spent, free_views_credits FROM users WHERE user_id=?", (m.from_user.id,), fetch=True)
+    if not u: return
+    ref_count = execute_db("SELECT COUNT(*) FROM referrals WHERE referrer_id=?", (m.from_user.id,), fetch=True)[0]
+    msg = f"👤 <b>YOUR PROFILE</b>\n━━━━━━━━━━━━━━━━━━━\n🆔 <b>ID:</b> <code>{m.from_user.id}</code>\n💳 <b>Wallet:</b> ₹{u[0]:.2f}\n📈 <b>Spent:</b> ₹{u[1]:.2f}\n🎁 <b>Free Views:</b> {u[2]}\n👥 <b>Referrals:</b> {ref_count}"
+    bot.send_message(m.chat.id, msg, parse_mode="HTML")
+
+@bot.message_handler(func=lambda m: m.text == "📦 Order History 📜")
+def h_order_history(m):
+    orders = execute_db("SELECT api_order_id, quantity, cost, status FROM orders WHERE user_id=? ORDER BY placed_time DESC LIMIT 5", (m.from_user.id,), fetch_all=True)
+    if not orders: return bot.send_message(m.chat.id, "📦 No orders yet!", parse_mode="HTML")
+    msg = "📦 <b>RECENT ORDERS:</b>\n━━━━━━━━━━━━━━━━━━━\n"
+    for o in orders: msg += f"🧾 <b>ID:</b> <code>{o[0]}</code> | 🔢 {o[1]} | 💰 ₹{o[2]:.2f}\n📊 <b>Status:</b> <code>{o[3]}</code>\n───────────────────\n"
+    bot.send_message(m.chat.id, msg, parse_mode="HTML")
+
+@bot.message_handler(func=lambda m: m.text == "🤝 Referral Program 👥")
+def h_referral(m):
+    u = execute_db("SELECT free_views_credits FROM users WHERE user_id=?", (m.from_user.id,), fetch=True)
+    ref_count = execute_db("SELECT COUNT(*) FROM referrals WHERE referrer_id=?", (m.from_user.id,), fetch=True)[0]
+    link = f"https://t.me/{bot.get_me().username}?start=ref_{m.from_user.id}"
+    msg = f"🤝 <b>REFERRAL REWARDS</b>\n🔗 <b>Your Link:</b>\n<code>{link}</code>\n\n👥 <b>Friends Joined:</b> {ref_count}\n🎁 <b>Free Credits:</b> {u[0]}\n\n<i>Get 1,000 Free Views for every friend who joins!</i>"
+    bot.send_message(m.chat.id, msg, parse_mode="HTML")
+
+@bot.message_handler(func=lambda m: m.text == "🎁 Claim Free 1K Views 🌟")
+def h_claim_free(m):
+    credits = execute_db("SELECT free_views_credits FROM users WHERE user_id=?", (m.from_user.id,), fetch=True)[0]
+    if credits <= 0: return bot.send_message(m.chat.id, "❌ <b>You have 0 Free Credits!</b>", parse_mode="HTML")
+    user_states[m.from_user.id] = {"state": "claim_free_link"}
+    bot.send_message(m.chat.id, f"🎁 <b>You have {credits} free credit(s)!</b>\n\n🔗 <b>Send the public post link for 1,000 views:</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "claim_free_link")
+def h_process_free_claim(m):
+    uid = m.from_user.id
+    if execute_db("SELECT free_views_credits FROM users WHERE user_id=?", (uid,), fetch=True)[0] <= 0: return
+    bot.send_message(m.chat.id, "⏳ <i>Processing free views...</i>", parse_mode="HTML")
+    api_res, prov_used = call_provider_api(FREE_VIEWS_PROVIDER, 'add', {'service': FREE_VIEWS_SERVICE_ID, 'link': m.text.strip(), 'quantity': 1000})
+    if api_res and 'order' in api_res:
+        execute_db("UPDATE users SET free_views_credits = free_views_credits - 1 WHERE user_id=?", (uid,))
+        execute_db("INSERT INTO orders (user_id, provider, api_order_id, service_id, quantity, cost, auto_refill) VALUES (?,?,?,?,?,?,0)", (uid, prov_used, api_res['order'], FREE_VIEWS_SERVICE_ID, 1000, 0.0))
+        bot.send_message(m.chat.id, f"✅ <b>SUCCESS! 1,000 FREE VIEWS ORDERED!</b>\n🧾 <b>ID:</b> <code>{api_res['order']}</code>", parse_mode="HTML", reply_markup=main_kb(uid))
+    else: bot.send_message(m.chat.id, "❌ <b>Failed! Check your link.</b>", parse_mode="HTML", reply_markup=main_kb(uid))
+    user_states.pop(uid, None)
+
+@bot.message_handler(func=lambda m: m.text == "📞 Support 🎫")
+def h_support(m):
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton("💬 Direct Chat", url=f"https://t.me/{SUPPORT_USERNAME.replace('@','')}"), InlineKeyboardButton("🎫 Open Ticket", callback_data="make_ticket"))
+    bot.send_message(m.chat.id, "📞 <b>SUPPORT DESK</b>", parse_mode="HTML", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "make_ticket")
+def h_ticket_init(c):
+    bot.answer_callback_query(c.id)
+    user_states[c.from_user.id] = {"state": "waiting_ticket_text"}
+    bot.send_message(c.message.chat.id, "📝 <b>Type your message/issue below:</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "waiting_ticket_text")
+def h_ticket_save(m):
+    uid = m.from_user.id
+    tid = execute_db("INSERT INTO tickets (user_id, message) VALUES (?,?)", (uid, m.text), return_id=True)
+    user_states.pop(uid, None)
+    bot.send_message(m.chat.id, f"✅ <b>Ticket #{tid} submitted!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
+    try: bot.send_message(ADMIN_ID, f"🚨 <b>NEW TICKET #{tid}</b>\nFrom: <code>{uid}</code>\n💬 {m.text}", parse_mode="HTML")
+    except: pass
 
 # =======================================================================================
-# 6. ADMIN MANAGER (MANUAL ADD / DEDUCT / BAN)
+# 6. ADD FUNDS FLOW
+# =======================================================================================
+@bot.message_handler(func=lambda m: m.text == "💳 Add Funds 💸")
+def h_add_funds(m):
+    if is_banned(m.from_user.id): return bot.send_message(m.chat.id, "🚫 You are banned.", parse_mode="HTML")
+    user_states[m.from_user.id] = {"state": "fund_amt"}
+    bot.send_message(m.chat.id, f"💸 <b>Enter deposit amount (₹):</b>\n(Minimum: <code>₹{MIN_DEPOSIT}</code>)", parse_mode="HTML", reply_markup=back_cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "fund_amt")
+def h_fund_qr(m):
+    try:
+        amt = float(m.text.strip())
+        if amt < MIN_DEPOSIT: return bot.send_message(m.chat.id, f"🚫 Minimum deposit is <code>₹{MIN_DEPOSIT}</code>", parse_mode="HTML", reply_markup=back_cancel_kb())
+        user_states[m.from_user.id] = {"state": "fund_ss", "amt": amt}
+        qr = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={urllib.parse.quote(f'upi://pay?pa={UPI_ID}&am={amt}&cu=INR')}"
+        res = requests.get(qr, timeout=10)
+        bot.send_photo(m.chat.id, BytesIO(res.content), caption=f"💳 <b>PAY EXACTLY ₹{amt}</b>\nUPI ID: <code>{UPI_ID}</code>\n\n📸 <b>Send screenshot here after paying!</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
+    except: bot.send_message(m.chat.id, "❌ Numbers only.", parse_mode="HTML")
+
+@bot.message_handler(content_types=['photo'])
+def h_payment_ss(m):
+    uid = m.from_user.id
+    if user_states.get(uid, {}).get("state") == "fund_ss":
+        amt = user_states[uid]["amt"]
+        tx = execute_db("INSERT INTO transactions (user_id, amount, status) VALUES (?, ?, 'PENDING')", (uid, amt), return_id=True)
+        kb = InlineKeyboardMarkup().add(InlineKeyboardButton("✅ Approve", callback_data=f"ap_{tx}_{uid}_{amt}"), InlineKeyboardButton("❌ Reject", callback_data=f"rj_{tx}_{uid}"))
+        bot.send_photo(ADMIN_ID, m.photo[-1].file_id, caption=f"🚨 <b>DEPOSIT</b>\nUser: <code>{uid}</code>\nAmount: <code>₹{amt}</code>\nTXN: <code>{tx}</code>", parse_mode="HTML", reply_markup=kb)
+        bot.send_message(m.chat.id, "✅ <b>Screenshot Received!</b> Waiting for admin approval.", parse_mode="HTML", reply_markup=main_kb(uid))
+        user_states.pop(uid, None)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith(("ap_", "rj_")))
+def h_admin_approval(c):
+    bot.answer_callback_query(c.id)
+    if c.from_user.id != ADMIN_ID: return
+    p = c.data.split("_")
+    action, tx, uid = p[0], p[1], p[2]
+    if action == "ap":
+        amt = float(p[3])
+        execute_db("UPDATE users SET balance=balance+? WHERE user_id=?", (amt, uid))
+        execute_db("UPDATE transactions SET status='APPROVED' WHERE tx_id=?", (tx,))
+        bot.edit_message_caption(f"✅ <b>APPROVED TXN-{tx}</b> | Added ₹{amt}", c.message.chat.id, c.message.message_id, parse_mode="HTML")
+        try: bot.send_message(uid, f"🎉 <b>PAYMENT APPROVED!</b> <code>₹{amt}</code> added to wallet!", parse_mode="HTML")
+        except: pass
+    else:
+        execute_db("UPDATE transactions SET status='REJECTED' WHERE tx_id=?", (tx,))
+        bot.edit_message_caption(f"❌ <b>REJECTED TXN-{tx}</b>", c.message.chat.id, c.message.message_id, parse_mode="HTML")
+        try: bot.send_message(uid, f"❌ <b>DEPOSIT REJECTED!</b> Contact Support.", parse_mode="HTML")
+        except: pass
+
+# =======================================================================================
+# 7. ADMIN CONTROLS (USERS, SYNC, MARGIN, BROADCAST, BACKUP/RESTORE, TICKETS)
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "👥 Admin: Manage Users" and m.from_user.id == ADMIN_ID)
 def h_admin_manage_users(m):
     user_states[ADMIN_ID] = {"state": "wait_manage_uid"}
-    bot.send_message(ADMIN_ID, "👥 <b>USER DASHBOARD</b>\n\n🔍 Enter the <b>User ID</b> you want to inspect or modify:", parse_mode="HTML", reply_markup=back_cancel_kb())
+    bot.send_message(ADMIN_ID, "🔍 Enter the <b>User ID</b>:", parse_mode="HTML", reply_markup=back_cancel_kb())
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "wait_manage_uid" and m.from_user.id == ADMIN_ID)
 def h_admin_manage_uid(m):
     try: target_uid = int(m.text.strip())
-    except: return bot.send_message(ADMIN_ID, "❌ User ID must be numbers only.", reply_markup=back_cancel_kb())
-    
+    except: return bot.send_message(ADMIN_ID, "❌ User ID must be numbers.", reply_markup=back_cancel_kb())
     user = execute_db("SELECT username, first_name, balance, total_spent, is_banned FROM users WHERE user_id=?", (target_uid,), fetch=True)
-    if not user: return bot.send_message(ADMIN_ID, "❌ User not found in database.", reply_markup=back_cancel_kb())
+    if not user: return bot.send_message(ADMIN_ID, "❌ User not found.")
     
     status = "🔴 BANNED" if user[4] else "🟢 ACTIVE"
-    msg = (
-        f"👤 <b>USER PROFILE CARDS</b>\n━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 <b>ID:</b> <code>{target_uid}</code>\n"
-        f"👤 <b>Name:</b> {html.escape(user[1] or 'N/A')} (@{user[0] or 'N/A'})\n"
-        f"💰 <b>Wallet:</b> ₹{user[2]:.2f}\n"
-        f"📈 <b>Spent:</b> ₹{user[3]:.2f}\n"
-        f"🛡️ <b>Status:</b> {status}\n━━━━━━━━━━━━━━━━━━━\n"
-        f"👇 <i>Select an action below:</i>"
-    )
-    
+    msg = f"👤 <b>USER</b> <code>{target_uid}</code>\n💰 <b>Wallet:</b> ₹{user[2]:.2f}\n🛡️ <b>Status:</b> {status}\n\n👇 <i>Select action:</i>"
     kb = InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        InlineKeyboardButton("➕ Add Balance", callback_data=f"adm_add_{target_uid}"),
-        InlineKeyboardButton("➖ Deduct Balance", callback_data=f"adm_sub_{target_uid}")
-    )
+    kb.add(InlineKeyboardButton("➕ Add Balance", callback_data=f"adm_add_{target_uid}"), InlineKeyboardButton("➖ Deduct Balance", callback_data=f"adm_sub_{target_uid}"))
     if user[4]: kb.add(InlineKeyboardButton("✅ Unban User", callback_data=f"adm_unban_{target_uid}"))
     else: kb.add(InlineKeyboardButton("🚫 Ban User", callback_data=f"adm_ban_{target_uid}"))
     
@@ -256,48 +338,159 @@ def h_admin_user_actions(c):
         bot.send_message(ADMIN_ID, f"➖ Enter amount to <b>DEDUCT</b> from User <code>{target_uid}</code>:", parse_mode="HTML", reply_markup=back_cancel_kb())
     elif action == "ban":
         execute_db("UPDATE users SET is_banned=1 WHERE user_id=?", (target_uid,))
-        bot.edit_message_text(f"🚫 <b>User {target_uid} is now BANNED.</b>", c.message.chat.id, c.message.message_id, parse_mode="HTML")
+        bot.edit_message_text(f"🚫 <b>User {target_uid} BANNED.</b>", c.message.chat.id, c.message.message_id, parse_mode="HTML")
     elif action == "unban":
         execute_db("UPDATE users SET is_banned=0 WHERE user_id=?", (target_uid,))
-        bot.edit_message_text(f"✅ <b>User {target_uid} is now UNBANNED.</b>", c.message.chat.id, c.message.message_id, parse_mode="HTML")
+        bot.edit_message_text(f"✅ <b>User {target_uid} UNBANNED.</b>", c.message.chat.id, c.message.message_id, parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") in ["wait_adm_add", "wait_adm_sub"] and m.from_user.id == ADMIN_ID)
 def h_admin_bal_adjust(m):
     state_data = user_states[ADMIN_ID]
     action, target_uid = state_data["state"], state_data["uid"]
-    
     try: amt = float(m.text.strip())
-    except: return bot.send_message(ADMIN_ID, "❌ Amount must be numbers only.", reply_markup=back_cancel_kb())
+    except: return bot.send_message(ADMIN_ID, "❌ Numbers only.", reply_markup=back_cancel_kb())
     
     if action == "wait_adm_add":
         execute_db("UPDATE users SET balance=balance+? WHERE user_id=?", (amt, target_uid))
         execute_db("INSERT INTO transactions (user_id, amount, status) VALUES (?, ?, 'ADMIN_ADD')", (target_uid, amt))
-        bot.send_message(ADMIN_ID, f"✅ <b>Added ₹{amt:.2f}</b> to user <code>{target_uid}</code>.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
-        try: bot.send_message(target_uid, f"🎁 <b>System Wallet Update:</b>\n₹{amt:.2f} has been added to your balance!", parse_mode="HTML")
+        bot.send_message(ADMIN_ID, f"✅ <b>Added ₹{amt:.2f}</b> to <code>{target_uid}</code>.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
+        try: bot.send_message(target_uid, f"🎁 ₹{amt:.2f} added to your balance!", parse_mode="HTML")
         except: pass
     else:
         user = execute_db("SELECT balance FROM users WHERE user_id=?", (target_uid,), fetch=True)
         new_bal = max(0.0, user[0] - amt)
         execute_db("UPDATE users SET balance=? WHERE user_id=?", (new_bal, target_uid))
         execute_db("INSERT INTO transactions (user_id, amount, status) VALUES (?, ?, 'ADMIN_DEDUCT')", (target_uid, -amt))
-        bot.send_message(ADMIN_ID, f"✅ <b>Deducted ₹{amt:.2f}</b> from user <code>{target_uid}</code>.\nNew Balance: ₹{new_bal:.2f}", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
-        try: bot.send_message(target_uid, f"⚠️ <b>System Wallet Update:</b>\n₹{amt:.2f} has been deducted from your balance.", parse_mode="HTML")
+        bot.send_message(ADMIN_ID, f"✅ <b>Deducted ₹{amt:.2f}</b> from <code>{target_uid}</code>.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
+        try: bot.send_message(target_uid, f"⚠️ ₹{amt:.2f} deducted from your balance.", parse_mode="HTML")
         except: pass
     user_states.pop(ADMIN_ID, None)
 
+@bot.message_handler(func=lambda m: m.text == "🧠 Admin: Smart Sync" and m.from_user.id == ADMIN_ID)
+def h_admin_smart_sync(m):
+    bot.send_message(ADMIN_ID, "🧠 <i>Smart Sync running...</i>", parse_mode="HTML")
+    res, _ = call_provider_api("provider_primary", "services")
+    if not res or not isinstance(res, list): return bot.send_message(ADMIN_ID, "❌ API Failed.")
+    execute_db("DELETE FROM managed_services")
+    margin = float(execute_db("SELECT value FROM settings WHERE key='global_margin'", fetch=True)[0])
+    
+    categories = {}
+    for s in res:
+        cat_name = s.get('category', 'General')
+        if cat_name not in categories: categories[cat_name] = []
+        categories[cat_name].append(s)
+        
+    added = 0
+    for cat_name, svcs in categories.items():
+        cat_lower = cat_name.lower()
+        if any(x in cat_lower for x in ['like', 'view', 'share']):
+            svcs.sort(key=lambda x: float(x.get('rate', 9999)))
+            best = svcs[:2]
+        elif any(x in cat_lower for x in ['follower', 'subscriber']):
+            hq = [x for x in svcs if any(k in x.get('name', '').lower() for k in ['refill', 'guarantee', 'hq'])]
+            if not hq: hq = svcs
+            hq.sort(key=lambda x: float(x.get('rate', 0)), reverse=True)
+            best = hq[-3:]
+        else:
+            svcs.sort(key=lambda x: float(x.get('rate', 9999)))
+            best = svcs[:1]
+            
+        for s in best:
+            try:
+                platform = detect_platform(cat_name, s.get('name', ''))
+                avg = "10-60 Mins" if "instant" in s.get('name', '').lower() else "1-24 Hours"
+                execute_db("""INSERT OR REPLACE INTO managed_services (service_id, platform, category, name, provider, provider_service_id, rate, min_qty, max_qty, avg_time, margin, disabled) VALUES (?, ?, ?, ?, 'provider_primary', ?, ?, ?, ?, ?, ?, 0)""",
+                    (int(s['service']), platform, cat_name, s['name'], int(s['service']), float(s['rate']), int(s.get('min', 10)), int(s.get('max', 100000)), avg, margin))
+                added += 1
+            except: continue
+    bot.send_message(ADMIN_ID, f"✅ <b>Sync Complete!</b> {added} services added.", parse_mode="HTML")
+
+@bot.message_handler(func=lambda m: m.text == "📈 Admin: Margin" and m.from_user.id == ADMIN_ID)
+def h_admin_margin(m):
+    user_states[ADMIN_ID] = {"state": "wait_margin"}
+    bot.send_message(ADMIN_ID, "📈 <b>Enter profit % (e.g. 50):</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "wait_margin" and m.from_user.id == ADMIN_ID)
+def h_process_margin(m):
+    try:
+        pct = float(m.text.strip())
+        multiplier = 1.0 + (pct / 100.0)
+        execute_db("UPDATE settings SET value=? WHERE key='global_margin'", (str(multiplier),))
+        execute_db("UPDATE managed_services SET margin=?", (multiplier,))
+        bot.send_message(ADMIN_ID, f"✅ Margin updated to {pct}% markup.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
+    except: bot.send_message(ADMIN_ID, "❌ Numbers only.")
+    user_states.pop(ADMIN_ID, None)
+
+@bot.message_handler(func=lambda m: m.text == "📢 Admin: Broadcast" and m.from_user.id == ADMIN_ID)
+def h_admin_broadcast(m):
+    user_states[ADMIN_ID] = {"state": "wait_broadcast"}
+    bot.send_message(ADMIN_ID, "📢 <b>Enter broadcast message:</b>", parse_mode="HTML", reply_markup=back_cancel_kb())
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "wait_broadcast" and m.from_user.id == ADMIN_ID)
+def h_process_broadcast(m):
+    users = execute_db("SELECT user_id FROM users WHERE is_banned=0", fetch_all=True)
+    sent = 0
+    for u in users:
+        try: bot.send_message(u[0], f"📢 <b>ANNOUNCEMENT:</b>\n\n{m.text}", parse_mode="HTML"); sent += 1
+        except: pass
+    bot.send_message(ADMIN_ID, f"✅ Broadcast sent to {sent} users.", parse_mode="HTML", reply_markup=main_kb(ADMIN_ID))
+    user_states.pop(ADMIN_ID, None)
+
+@bot.message_handler(func=lambda m: m.text == "🎫 Admin: Tickets" and m.from_user.id == ADMIN_ID)
+def h_admin_view_tickets(m):
+    tickets = execute_db("SELECT ticket_id, user_id, message FROM tickets WHERE status='OPEN' LIMIT 5", fetch_all=True)
+    if not tickets: return bot.send_message(ADMIN_ID, "✅ No open tickets.")
+    for t in tickets: bot.send_message(ADMIN_ID, f"🎫 <b>Ticket #{t[0]}</b>\nUser: <code>{t[1]}</code>\n💬 {t[2]}", parse_mode="HTML")
+
+@bot.message_handler(func=lambda m: m.text == "💾 Admin: Backup DB" and m.from_user.id == ADMIN_ID)
+def handle_admin_backup(m):
+    uid = m.from_user.id
+    bot.send_message(uid, "⏳ <i>Generating snapshot...</i>", parse_mode="HTML")
+    backup_file = f"backup_{int(time.time())}.db"
+    try:
+        with db_lock:
+            with sqlite3.connect('panel_v16.db') as src, sqlite3.connect(backup_file) as dst: src.backup(dst)
+        with open(backup_file, 'rb') as doc:
+            bot.send_document(uid, doc, caption="💾 <b>Database Backup</b> ✅", parse_mode="HTML")
+    except Exception as e: bot.send_message(uid, f"❌ Backup Failed: <code>{e}</code>", parse_mode="HTML")
+    finally:
+        if os.path.exists(backup_file): os.remove(backup_file)
+
+@bot.message_handler(func=lambda m: m.text == "🔄 Admin: Restore DB" and m.from_user.id == ADMIN_ID)
+def handle_admin_restore_prompt(m):
+    user_states[ADMIN_ID] = {"state": "wait_for_db_upload"}
+    bot.send_message(ADMIN_ID, "⚠️ Upload <code>.db</code> file below:", parse_mode="HTML", reply_markup=back_cancel_kb())
+
+@bot.message_handler(content_types=['document'])
+def handle_document_upload(m):
+    uid = m.from_user.id
+    if uid == ADMIN_ID and user_states.get(uid, {}).get("state") == "wait_for_db_upload":
+        if not m.document.file_name.endswith('.db'): return bot.send_message(uid, "❌ .db file only.", reply_markup=main_kb(uid))
+        temp_file = f"restore_{int(time.time())}.db"
+        try:
+            bot.send_message(uid, "⏳ <i>Restoring...</i>", parse_mode="HTML")
+            downloaded = bot.download_file(bot.get_file(m.document.file_id).file_path)
+            with open(temp_file, 'wb') as f: f.write(downloaded)
+            with db_lock:
+                with sqlite3.connect(temp_file) as src, sqlite3.connect('panel_v16.db') as dst: src.backup(dst)
+            bot.send_message(uid, "✅ <b>RESTORED SUCCESSFULLY!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
+        except Exception as e: bot.send_message(uid, f"❌ Failed: {e}", reply_markup=main_kb(uid))
+        finally:
+            user_states.pop(uid, None)
+            if os.path.exists(temp_file): os.remove(temp_file)
+
 # =======================================================================================
-# 7. PLATFORM BROWSING & BUYING
+# 8. PLATFORM BROWSING & BUYING
 # =======================================================================================
 @bot.message_handler(func=lambda m: m.text == "🛒 Browse Services 🚀")
 def h_browse(m):
-    if is_banned(m.from_user.id): return bot.send_message(m.chat.id, "🚫 You are banned from using this bot.")
+    if is_banned(m.from_user.id): return bot.send_message(m.chat.id, "🚫 You are banned.")
     user_states.pop(m.from_user.id, None)
     platforms = execute_db("SELECT DISTINCT platform FROM managed_services WHERE disabled=0 ORDER BY platform ASC", fetch_all=True)
     if not platforms: return bot.send_message(m.chat.id, "⚠️ No services loaded! Admin needs to run Smart Sync.")
-    
     kb = InlineKeyboardMarkup(row_width=2)
     for idx, p in enumerate(platforms): kb.add(InlineKeyboardButton(f"{p[0]}", callback_data=f"plt_{idx}"))
-    bot.send_message(m.chat.id, "🛒 <b>CHOOSE YOUR PLATFORM:</b> 🌐✨\n━━━━━━━━━━━━━━━━━━━\n👇 <i>Select which platform you want to grow:</i>", parse_mode="HTML", reply_markup=kb)
+    bot.send_message(m.chat.id, "🛒 <b>CHOOSE YOUR PLATFORM:</b> 🌐✨\n━━━━━━━━━━━━━━━━━━━\n👇 <i>Select platform:</i>", parse_mode="HTML", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("plt_"))
 def h_platform_view(c):
@@ -306,7 +499,6 @@ def h_platform_view(c):
     platforms = execute_db("SELECT DISTINCT platform FROM managed_services WHERE disabled=0 ORDER BY platform ASC", fetch_all=True)
     if idx >= len(platforms): return
     platform_name = platforms[idx][0]
-    
     cats = execute_db("SELECT DISTINCT category FROM managed_services WHERE platform=? AND disabled=0", (platform_name,), fetch_all=True)
     kb = InlineKeyboardMarkup(row_width=1)
     for c_idx, cat in enumerate(cats): kb.add(InlineKeyboardButton(f"📁 {cat[0]}", callback_data=f"cat_{idx}_{c_idx}"))
@@ -319,27 +511,24 @@ def h_back_platforms(c):
     platforms = execute_db("SELECT DISTINCT platform FROM managed_services WHERE disabled=0 ORDER BY platform ASC", fetch_all=True)
     kb = InlineKeyboardMarkup(row_width=2)
     for idx, p in enumerate(platforms): kb.add(InlineKeyboardButton(f"{p[0]}", callback_data=f"plt_{idx}"))
-    bot.edit_message_text("🛒 <b>CHOOSE YOUR PLATFORM:</b> 🌐✨\n━━━━━━━━━━━━━━━━━━━\n👇 <i>Select which platform you want to grow:</i>", c.message.chat.id, c.message.message_id, parse_mode="HTML", reply_markup=kb)
+    bot.edit_message_text("🛒 <b>CHOOSE PLATFORM:</b>\n👇 <i>Select platform:</i>", c.message.chat.id, c.message.message_id, parse_mode="HTML", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("cat_"))
 def h_category_services(c):
     bot.answer_callback_query(c.id)
     _, p_idx, c_idx = c.data.split("_")
     p_idx, c_idx = int(p_idx), int(c_idx)
-    
     platforms = execute_db("SELECT DISTINCT platform FROM managed_services WHERE disabled=0 ORDER BY platform ASC", fetch_all=True)
     if p_idx >= len(platforms): return
     platform_name = platforms[p_idx][0]
-    
     cats = execute_db("SELECT DISTINCT category FROM managed_services WHERE platform=? AND disabled=0", (platform_name,), fetch_all=True)
     if c_idx >= len(cats): return
     category_name = cats[c_idx][0]
-    
     svcs = execute_db("SELECT service_id, name, rate, margin FROM managed_services WHERE platform=? AND category=? AND disabled=0", (platform_name, category_name), fetch_all=True)
     kb = InlineKeyboardMarkup(row_width=1)
     for s in svcs: kb.add(InlineKeyboardButton(f"⭐ {s[1]} - ₹{(s[2]*s[3]):.2f}/1K", callback_data=f"card_{s[0]}_{p_idx}_{c_idx}"))
     kb.add(InlineKeyboardButton(f"🔙 Back to {platform_name}", callback_data=f"plt_{p_idx}"))
-    bot.edit_message_text(f"📂 <b>{html.escape(category_name.upper())}</b> 📊\n━━━━━━━━━━━━━━━━━━━\n👇 <i>Tap a service to view details:</i>", c.message.chat.id, c.message.message_id, parse_mode="HTML", reply_markup=kb)
+    bot.edit_message_text(f"📂 <b>{html.escape(category_name.upper())}</b> 📊\n━━━━━━━━━━━━━━━━━━━\n👇 <i>Tap a service:</i>", c.message.chat.id, c.message.message_id, parse_mode="HTML", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("card_"))
 def h_card_view(c):
@@ -347,12 +536,10 @@ def h_card_view(c):
     _, sid, p_idx, c_idx = c.data.split("_")
     svc = execute_db("SELECT service_id, platform, name, rate, min_qty, max_qty, avg_time, margin FROM managed_services WHERE service_id=?", (int(sid),), fetch=True)
     if not svc: return
-    
     final_price = svc[3] * svc[7]
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(InlineKeyboardButton("🚀 Order This Service Now", callback_data=f"buy_{svc[0]}"))
     kb.add(InlineKeyboardButton("🔙 Back to Services", callback_data=f"cat_{p_idx}_{c_idx}"))
-    
     msg = (f"🏷️ <b>SERVICE DETAILS</b> 📋\n━━━━━━━━━━━━━━━━━━━\n📌 <b>Service:</b> {html.escape(svc[2])}\n"
            f"💰 <b>Price:</b> <code>₹{final_price:.2f}</code> per 1,000\n📊 <b>Limits:</b> Min <code>{svc[4]:,}</code> — Max <code>{svc[5]:,}</code>\n"
            f"⏱️ <b>Avg Speed:</b> <code>{svc[6]}</code>\n♻️ <b>Auto-Refill:</b> <code>Active</code> 🛡️")
@@ -361,15 +548,15 @@ def h_card_view(c):
 @bot.callback_query_handler(func=lambda c: c.data.startswith("buy_"))
 def h_buy_service(c):
     bot.answer_callback_query(c.id)
-    if is_banned(c.from_user.id): return bot.send_message(c.message.chat.id, "🚫 You are banned from placing orders.")
+    if is_banned(c.from_user.id): return bot.send_message(c.message.chat.id, "🚫 You are banned.")
     sid = int(c.data.split("_")[1])
     user_states[c.from_user.id] = {"state": "get_link", "sid": sid}
-    bot.send_message(c.message.chat.id, "🔗 <b>STEP 1: Send the Target Link</b> 📌\n<i>Paste the public profile/post URL:</i>", parse_mode="HTML", reply_markup=back_cancel_kb())
+    bot.send_message(c.message.chat.id, "🔗 <b>STEP 1: Send the Target Link</b> 📌\n<i>Paste the public URL:</i>", parse_mode="HTML", reply_markup=back_cancel_kb())
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "get_link")
 def h_link_input(m):
     user_states[m.from_user.id].update({"state": "get_qty", "link": m.text.strip()})
-    bot.send_message(m.chat.id, "✅ <b>Link Received!</b> 🔗\n\n🔢 <b>STEP 2: Enter Quantity</b> 📊\n<i>Type numbers only (e.g. 1000):</i>", parse_mode="HTML", reply_markup=back_cancel_kb())
+    bot.send_message(m.chat.id, "✅ <b>Link Received!</b> 🔗\n\n🔢 <b>STEP 2: Enter Quantity</b> 📊\n<i>Type numbers only:</i>", parse_mode="HTML", reply_markup=back_cancel_kb())
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id, {}).get("state") == "get_qty")
 def h_qty_input(m):
@@ -380,9 +567,8 @@ def h_qty_input(m):
 
     svc = execute_db("SELECT provider, provider_service_id, rate, margin, min_qty, max_qty FROM managed_services WHERE service_id=?", (state["sid"],), fetch=True)
     if not svc: return
-    
     if qty < svc[4] or qty > svc[5]:
-        return bot.send_message(m.chat.id, f"🚫 <b>Quantity Out of Range!</b>\nMin: <code>{svc[4]}</code> | Max: <code>{svc[5]}</code>", parse_mode="HTML", reply_markup=back_cancel_kb())
+        return bot.send_message(m.chat.id, f"🚫 <b>Out of Range!</b> Min: <code>{svc[4]}</code> | Max: <code>{svc[5]}</code>", parse_mode="HTML", reply_markup=back_cancel_kb())
 
     cost = (qty / 1000.0) * (svc[2] * svc[3])
     u_bal = execute_db("SELECT balance FROM users WHERE user_id=?", (uid,), fetch=True)[0]
@@ -399,11 +585,11 @@ def h_qty_input(m):
         execute_db("INSERT INTO orders (user_id, provider, api_order_id, service_id, quantity, cost, auto_refill) VALUES (?,?,?,?,?,?,1)",
                    (uid, prov_used, api_res['order'], state["sid"], qty, cost))
         bot.send_message(m.chat.id, f"✅ <b>ORDER DISPATCHED!</b> 🎉\n🧾 <b>ID:</b> <code>{api_res['order']}</code>\n💰 <b>Cost:</b> ₹{cost:.2f}", parse_mode="HTML", reply_markup=main_kb(uid))
-    else: bot.send_message(m.chat.id, "❌ <b>Provider Error!</b> Please try a different service.", parse_mode="HTML", reply_markup=main_kb(uid))
+    else: bot.send_message(m.chat.id, "❌ <b>Provider Error!</b>", parse_mode="HTML", reply_markup=main_kb(uid))
     user_states.pop(uid, None)
 
 # =======================================================================================
-# 8. BACKGROUND TASKS
+# 9. BACKGROUND TASKS
 # =======================================================================================
 def auto_refill_and_status_monitor():
     while True:
