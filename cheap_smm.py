@@ -16,7 +16,7 @@ from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeybo
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # ⚠️ REPLACE THESE WITH YOUR KEYS!
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAG4RTspUyNl-ixiFsnNxUIJ-L35W7Lqxog')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFJXZi9nRaRXlQv9MiYho0VzpTBIVZ2VwM')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.Ab8RN6K9E8LLYov90BvynM1mZEJ_GYh_7N-LTcu6eefJW2m4YA')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
@@ -24,7 +24,7 @@ bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 PROVIDERS = {
     "provider_primary": {
         "url": os.environ.get("API_URL_1", "https://iggrowbot.com/api/v2"),
-        "key": os.environ.get("API_KEY_1", "797c2fb97d3fce189d397ef7639cc29f")
+        "key": os.environ.get("API_KEY_1", "2133d049bafce6bedc682f852e622318")
     }
 }
 
