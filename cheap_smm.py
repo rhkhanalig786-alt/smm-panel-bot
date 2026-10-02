@@ -16,7 +16,7 @@ from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeybo
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # ⚠️ REPLACE THESE WITH YOUR KEYS!
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAFJXZi9nRaRXlQv9MiYho0VzpTBIVZ2VwM')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8228287584:AAHoCQ9KXnQxyqedSwuCrwggG7Wpbvtarko')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.Ab8RN6K9E8LLYov90BvynM1mZEJ_GYh_7N-LTcu6eefJW2m4YA')
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
